@@ -6,6 +6,8 @@ import LearningPage from "./pages/LearningPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import InstructorDashboardPage from "./pages/instructor/InstructorDashboardPage";
+import CourseEditorPage from "./pages/instructor/CourseEditorPage";
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
         <Route path="/" element={<CatalogPage />} />
         <Route path="/courses/:slug" element={<CourseDetailPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/instructor" element={<InstructorDashboardPage />} />
+        <Route path="/instructor/course/:id" element={<CourseEditorPage />} />
       </Route>
       <Route
         path="/learn/:courseId/lesson/:lessonId"

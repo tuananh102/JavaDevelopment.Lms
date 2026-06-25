@@ -38,6 +38,11 @@ export default function MainLayout() {
                     <LayoutDashboard className="h-4 w-4 mr-1" />
                     Dashboard
                   </Link>
+                  {user?.role === 'INSTRUCTOR' && (
+                    <Link to="/instructor" className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium">
+                      Instructor Area
+                    </Link>
+                  )}
                   <div className="flex items-center space-x-4 border-l border-slate-200 pl-4">
                     <span className="text-sm font-medium text-slate-700">
                       {user?.fullName}

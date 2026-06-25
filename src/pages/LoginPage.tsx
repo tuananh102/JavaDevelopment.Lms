@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { useAuthStore } from "../store/authStore";
 import api from "../lib/api";
-import { BookOpen } from "lucide-react";
+import { BookOpen, User, GraduationCap } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,12 +17,23 @@ export default function LoginPage() {
       const response = await api.post("/auth/login", { email, password });
       const { token, id, fullName, role } = response.data;
       setAuth({ id, email, fullName, role }, token);
-      navigate("/dashboard");
+      navigate(role === "INSTRUCTOR" ? "/instructor" : "/dashboard");
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Login failed. Please try again.",
       );
     }
+  };
+
+  const demoLogin = (role: "STUDENT" | "INSTRUCTOR" | "ADMIN") => {
+    const user = {
+      id: role === "INSTRUCTOR" ? "222" : role === "ADMIN" ? "111" : "333",
+      email: role === "INSTRUCTOR" ? "instructor@lms.com" : role === "ADMIN" ? "admin@lms.com" : "student@lms.com",
+      fullName: role === "INSTRUCTOR" ? "Alex Instructor" : role === "ADMIN" ? "System Admin" : "John Student",
+      role: role
+    };
+    setAuth(user, "demo-jwt-token");
+    navigate(role === "INSTRUCTOR" ? "/instructor" : "/dashboard");
   };
 
   return (
@@ -38,6 +49,23 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-slate-200">
+          
+          <div className="mb-6 space-y-3">
+            <p className="text-sm font-medium text-slate-500 text-center mb-2">Demo Access (No Backend Required)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => demoLogin('STUDENT')} className="flex items-center justify-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors">
+                <User className="w-4 h-4 mr-2 text-indigo-600" /> Student
+              </button>
+              <button type="button" onClick={() => demoLogin('INSTRUCTOR')} className="flex items-center justify-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors">
+                <GraduationCap className="w-4 h-4 mr-2 text-emerald-600" /> Instructor
+              </button>
+            </div>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
+              <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-slate-500">Or use real API</span></div>
+            </div>
+          </div>
+
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
               <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
