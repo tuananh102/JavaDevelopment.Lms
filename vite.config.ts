@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/JavaDevelopment.Lms/', // Thay vì './', dùng chính xác tên repo của bạn
+    base: './', // Thay vì './', dùng chính xác tên repo của bạn
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
