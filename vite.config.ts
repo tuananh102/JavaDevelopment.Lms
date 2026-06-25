@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: './', // Cấu hình đường dẫn tương đối để load đúng file js/css trên GitHub Pages
+    base: '/JavaDevelopment.Lms/', // Thay vì './', dùng chính xác tên repo của bạn
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
