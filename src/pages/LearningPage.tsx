@@ -8,33 +8,74 @@ import {
   ChevronRight,
   Menu,
   X,
+  PlayCircle
 } from "lucide-react";
 import * as Progress from "@radix-ui/react-progress";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../lib/api";
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-// Progress Tracking Focus Area
 export default function LearningPage() {
   const { courseId, lessonId } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [completedLessons, setCompletedLessons] = useState<
-    Record<string, boolean>
-  >({ l1: true });
+  const queryClient = useQueryClient();
 
-  // Mock
-  const courseTitle = "Full-Stack Development with Spring Boot 4 & React 19";
-  const progressPercent = 25; // derived from completed lessons / total lessons
+  const { data: course, isLoading: loadingCourse } = useQuery({
+    queryKey: ["course-by-id", courseId],
+    queryFn: async () => {
+      // In a real app we'd fetch by ID. Here the mock uses slug for the API but the mock server returns the same course.
+      const res = await api.get(`/courses/spring-boot-react-fullstack`);
+      return res.data;
+    },
+  });
+
+  const { data: completedLessonIds = [], isLoading: loadingProgress } = useQuery({
+    queryKey: ["progress", courseId],
+    queryFn: async () => {
+      const res = await api.get(`/progress/courses/${courseId}/completed`);
+      return res.data;
+    },
+    enabled: !!courseId,
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.post(`/progress/courses/${courseId}/lessons/${id}/complete`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["progress", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["enrollments"] });
+    },
+  });
+
+  if (loadingCourse || loadingProgress) return <div className="p-8 text-white bg-slate-900 h-screen">Loading lesson...</div>;
+  if (!course) return <div className="p-8 text-white bg-slate-900 h-screen">Course not found</div>;
+
+  let allLessons: any[] = [];
+  course.sections.forEach((s: any) => {
+    allLessons = [...allLessons, ...s.lessons];
+  });
+
+  const currentLessonIndex = allLessons.findIndex((l) => l.id === lessonId);
+  const currentLesson = allLessons[currentLessonIndex] || allLessons[0];
+  
+  const isCompleted = completedLessonIds.includes(currentLesson.id);
+  const totalLessons = allLessons.length;
+  const progressPercent = totalLessons > 0 ? Math.round((completedLessonIds.length / totalLessons) * 100) : 0;
 
   const markComplete = () => {
-    if (lessonId) {
-      setCompletedLessons((prev) => ({ ...prev, [lessonId]: true }));
-      // API call: POST /api/v1/lessons/{id}/complete
+    if (!isCompleted) {
+      completeMutation.mutate(currentLesson.id);
     }
   };
+
+  const prevLesson = currentLessonIndex > 0 ? allLessons[currentLessonIndex - 1] : null;
+  const nextLesson = currentLessonIndex < allLessons.length - 1 ? allLessons[currentLessonIndex + 1] : null;
 
   return (
     <div className="h-screen w-full flex flex-col bg-white overflow-hidden">
@@ -42,15 +83,16 @@ export default function LearningPage() {
       <header className="h-14 bg-slate-900 text-white flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center space-x-4">
           <Link
-            to={`/courses/spring-boot-react-fullstack`}
+            to={`/dashboard`}
             className="text-slate-300 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="font-semibold text-sm md:text-base hidden sm:block truncate max-w-md">
-            {courseTitle}
+            {course.title}
           </h1>
         </div>
+
         <div className="flex items-center space-x-6">
           <div className="hidden md:flex items-center space-x-3 w-48">
             <Progress.Root
@@ -66,6 +108,7 @@ export default function LearningPage() {
               {progressPercent}%
             </span>
           </div>
+
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="md:hidden text-slate-300 hover:text-white"
@@ -82,39 +125,41 @@ export default function LearningPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col relative overflow-y-auto bg-slate-50">
-          <div className="w-full aspect-video bg-black flex items-center justify-center shrink-0">
-            {/* Video Player Placeholder */}
-            <div className="text-white text-center">
-              <p className="text-slate-400 mb-2">Video Player</p>
-              <p className="font-mono text-sm bg-slate-800 px-3 py-1 rounded">
-                Update Progress API will track last_position
-              </p>
+          {currentLesson.type === "VIDEO" && (
+            <div className="w-full aspect-video bg-black flex items-center justify-center shrink-0">
+              <div className="text-white text-center flex flex-col items-center">
+                <PlayCircle className="w-16 h-16 text-slate-600 mb-4" />
+                <p className="text-slate-400 mb-2">Video Player Placeholder</p>
+                <p className="font-mono text-sm bg-slate-800 px-3 py-1 rounded">
+                  {currentLesson.title}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="max-w-4xl mx-auto w-full px-6 py-8">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-slate-900">
-                1. Setting up the Environment
+                {currentLesson.title}
               </h2>
               <button
                 onClick={markComplete}
+                disabled={completeMutation.isPending || isCompleted}
                 className={cn(
                   "flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-colors border",
-                  completedLessons[lessonId || ""]
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  isCompleted
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default"
                     : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
                 )}
               >
-                {completedLessons[lessonId || ""] ? (
+                {isCompleted ? (
                   <>
                     <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" />{" "}
                     Completed
                   </>
                 ) : (
                   <>
-                    <Circle className="w-4 h-4 mr-2 text-slate-400" /> Mark as
-                    Complete
+                    <Circle className="w-4 h-4 mr-2 text-slate-400" /> Mark as Complete
                   </>
                 )}
               </button>
@@ -122,25 +167,31 @@ export default function LearningPage() {
 
             <div className="prose prose-slate max-w-none">
               <p>
-                In this lesson, we will cover how to install Java 25, configure
-                Maven, and set up your IDE.
+                Welcome to this lesson on <strong>{currentLesson.title}</strong>. 
+                Please watch the video above or read the provided materials to understand the concepts.
               </p>
-              <h3>Prerequisites</h3>
-              <ul>
-                <li>Ensure you have admin rights on your machine.</li>
-                <li>Download IntelliJ IDEA or VS Code.</li>
-              </ul>
             </div>
           </div>
 
           {/* Bottom Navigation */}
-          <div className="mt-auto border-t border-slate-200 bg-white p-4 flex justify-between items-center">
-            <button className="flex items-center text-slate-600 hover:text-slate-900 font-medium text-sm">
-              <ChevronLeft className="w-5 h-5 mr-1" /> Previous Lesson
-            </button>
-            <button className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm">
-              Next Lesson <ChevronRight className="w-5 h-5 ml-1" />
-            </button>
+          <div className="mt-auto border-t border-slate-200 bg-white p-4 flex justify-between items-center shrink-0">
+            {prevLesson ? (
+              <Link 
+                to={`/learn/${courseId}/lesson/${prevLesson.id}`}
+                className="flex items-center text-slate-600 hover:text-slate-900 font-medium text-sm px-4 py-2"
+              >
+                <ChevronLeft className="w-5 h-5 mr-1" /> Previous Lesson
+              </Link>
+            ) : <div />}
+            
+            {nextLesson ? (
+              <Link 
+                to={`/learn/${courseId}/lesson/${nextLesson.id}`}
+                className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm px-4 py-2 bg-indigo-50 rounded-lg"
+              >
+                Next Lesson <ChevronRight className="w-5 h-5 ml-1" />
+              </Link>
+            ) : <div />}
           </div>
         </main>
 
@@ -160,41 +211,46 @@ export default function LearningPage() {
               <X className="w-5 h-5" />
             </button>
           </div>
+
           <div className="flex-1 overflow-y-auto">
-            {/* Section 1 */}
-            <div className="border-b border-slate-100">
-              <div className="px-4 py-3 bg-white font-semibold text-sm text-slate-800">
-                1. Getting Started
+            {course.sections.map((section: any) => (
+              <div key={section.id} className="border-b border-slate-100">
+                <div className="px-4 py-3 bg-white font-semibold text-sm text-slate-800">
+                  Section {section.orderIndex}: {section.title}
+                </div>
+                <div>
+                  {section.lessons.map((lesson: any) => {
+                    const isLessonComplete = completedLessonIds.includes(lesson.id);
+                    const isActive = currentLesson.id === lesson.id;
+                    
+                    return (
+                      <Link
+                        key={lesson.id}
+                        to={`/learn/${courseId}/lesson/${lesson.id}`}
+                        className={cn(
+                          "flex items-center px-4 py-3 border-l-2",
+                          isActive 
+                            ? "bg-indigo-50 border-indigo-600" 
+                            : "hover:bg-slate-50 border-transparent"
+                        )}
+                      >
+                        {isLessonComplete ? (
+                          <CheckCircle className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
+                        ) : (
+                          <Circle className="w-4 h-4 mr-3 text-slate-300 shrink-0" />
+                        )}
+                        <span className={cn(
+                          "text-sm line-clamp-2",
+                          isActive ? "font-medium text-indigo-900" : "text-slate-600"
+                        )}>
+                          {lesson.orderIndex}. {lesson.title}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-              <div>
-                <Link
-                  to="/learn/1/lesson/l1"
-                  className="flex items-center px-4 py-3 hover:bg-slate-50 border-l-2 border-transparent"
-                >
-                  {completedLessons["l1"] ? (
-                    <CheckCircle className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
-                  ) : (
-                    <Circle className="w-4 h-4 mr-3 text-slate-300 shrink-0" />
-                  )}
-                  <span className="text-sm text-slate-600 line-clamp-2">
-                    1. Course Introduction
-                  </span>
-                </Link>
-                <Link
-                  to="/learn/1/lesson/l2"
-                  className="flex items-center px-4 py-3 bg-indigo-50 border-l-2 border-indigo-600"
-                >
-                  {completedLessons["l2"] ? (
-                    <CheckCircle className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
-                  ) : (
-                    <Circle className="w-4 h-4 mr-3 text-slate-300 shrink-0" />
-                  )}
-                  <span className="text-sm font-medium text-indigo-900 line-clamp-2">
-                    2. Setting up the Environment
-                  </span>
-                </Link>
-              </div>
-            </div>
+            ))}
           </div>
         </aside>
       </div>

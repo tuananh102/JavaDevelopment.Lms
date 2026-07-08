@@ -1,7 +1,10 @@
 package com.lms.course;
 
 import com.lms.course.dto.CourseCreateRequest;
+import com.lms.course.dto.CourseDetailDto;
 import com.lms.course.dto.CourseDto;
+import com.lms.course.dto.LessonDto;
+import com.lms.course.dto.SectionDto;
 import com.lms.user.User;
 import com.lms.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,11 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CourseService {
-
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
 
@@ -26,10 +29,10 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public CourseDto getCourseBySlug(String slug) {
+    public CourseDetailDto getCourseBySlug(String slug) {
         Course course = courseRepository.findBySlug(slug)
                 .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-        return mapToDto(course);
+        return mapToDetailDto(course);
     }
 
     @Transactional
@@ -81,6 +84,48 @@ public class CourseService {
         dto.setInstructorId(course.getInstructor().getId());
         dto.setCreatedAt(course.getCreatedAt());
         dto.setUpdatedAt(course.getUpdatedAt());
+        return dto;
+    }
+
+    private CourseDetailDto mapToDetailDto(Course course) {
+        CourseDetailDto dto = new CourseDetailDto();
+        dto.setId(course.getId());
+        dto.setTitle(course.getTitle());
+        dto.setSlug(course.getSlug());
+        dto.setDescription(course.getDescription());
+        dto.setThumbnailUrl(course.getThumbnailUrl());
+        dto.setPrice(course.getPrice());
+        dto.setLevel(course.getLevel());
+        dto.setStatus(course.getStatus());
+        dto.setCategoryId(course.getCategoryId());
+        dto.setInstructorId(course.getInstructor().getId());
+        dto.setCreatedAt(course.getCreatedAt());
+        dto.setUpdatedAt(course.getUpdatedAt());
+
+        if (course.getSections() != null) {
+            dto.setSections(course.getSections().stream().map(section -> {
+                SectionDto sectionDto = new SectionDto();
+                sectionDto.setId(section.getId());
+                sectionDto.setTitle(section.getTitle());
+                sectionDto.setOrderIndex(section.getOrderIndex());
+
+                if (section.getLessons() != null) {
+                    sectionDto.setLessons(section.getLessons().stream().map(lesson -> {
+                        LessonDto lessonDto = new LessonDto();
+                        lessonDto.setId(lesson.getId());
+                        lessonDto.setTitle(lesson.getTitle());
+                        lessonDto.setType(lesson.getType());
+                        lessonDto.setContentUrl(lesson.getContentUrl());
+                        lessonDto.setContentText(lesson.getContentText());
+                        lessonDto.setDurationSeconds(lesson.getDurationSeconds());
+                        lessonDto.setOrderIndex(lesson.getOrderIndex());
+                        return lessonDto;
+                    }).collect(Collectors.toList()));
+                }
+                return sectionDto;
+            }).collect(Collectors.toList()));
+        }
+
         return dto;
     }
 }

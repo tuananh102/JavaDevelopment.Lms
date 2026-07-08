@@ -1,6 +1,7 @@
 package com.lms.course;
 
 import com.lms.course.dto.CourseCreateRequest;
+import com.lms.course.dto.CourseDetailDto;
 import com.lms.course.dto.CourseDto;
 import com.lms.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
@@ -37,7 +38,7 @@ public class CourseController {
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<CourseDto> getCourseBySlug(@PathVariable String slug) {
+    public ResponseEntity<CourseDetailDto> getCourseBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(courseService.getCourseBySlug(slug));
     }
 

@@ -9,19 +9,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ProgressService {
-
     private final LessonProgressRepository progressRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final LessonRepository lessonRepository;
 
-    /**
-     * Mark a lesson as completed and update course progress.
-     */
     @Transactional
     public void markLessonComplete(UUID userId, UUID courseId, UUID lessonId) {
         Enrollment enrollment = enrollmentRepository.findByUserIdAndCourseId(userId, courseId)
@@ -55,9 +53,6 @@ public class ProgressService {
         }
     }
 
-    /**
-     * Save the last playback position for a video lesson.
-     */
     @Transactional
     public void updateVideoProgress(UUID userId, UUID courseId, UUID lessonId, int lastPositionSeconds) {
         Enrollment enrollment = enrollmentRepository.findByUserIdAndCourseId(userId, courseId)
@@ -78,5 +73,16 @@ public class ProgressService {
         }
         progress.setLastPositionSeconds(lastPositionSeconds);
         progressRepository.save(progress);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<UUID> getCompletedLessonIds(UUID userId, UUID courseId) {
+        Enrollment enrollment = enrollmentRepository.findByUserIdAndCourseId(userId, courseId)
+                .orElseThrow(() -> new IllegalArgumentException("User is not enrolled in this course"));
+                
+        return progressRepository.findByEnrollmentIdAndStatus(enrollment.getId(), LessonProgress.Status.COMPLETED)
+                .stream()
+                .map(p -> p.getLesson().getId())
+                .collect(Collectors.toList());
     }
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Save, Plus, GripVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, GripVertical, Trash2, Edit } from "lucide-react";
 import { Link } from "react-router";
 
 // Mock structure for UI purposes
