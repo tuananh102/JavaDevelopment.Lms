@@ -10,7 +10,7 @@ This is a monorepo for an LMS (Learning Management System) with two independentl
 - `frontend/` — React 19 + Vite SPA (TypeScript). Deployed to GitHub Pages.
 - `docker-compose.yml` — PostgreSQL 18 for local backend development.
 
-There is a second, separate Vite scaffold at the **repo root** (`package.json`, `vite.config.ts`, `metadata.json`) wired for Google AI Studio / Gemini. It is not the LMS frontend — the real app is `frontend/`. Ignore the root scaffold unless a task explicitly targets it.
+The only apps are `backend/` and `frontend/`. (A leftover Google AI Studio / Gemini Vite scaffold that used to sit at the repo root — `package.json`, `vite.config.ts`, `tsconfig.json`, `metadata.json`, `assets/` — has been removed.)
 
 > Note: `README.md` is partly stale — it says the frontend lives in `/src` and runs from the repo root. The actual working frontend is in `frontend/`. Trust this file and the code over the README on directory layout.
 
