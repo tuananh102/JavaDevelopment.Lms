@@ -1,10 +1,16 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { ArrowLeft, Save, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Loader2, Pencil, Trash2, Check, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 
 const LEVELS = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"] as const;
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 function slugify(s: string) {
   return s
@@ -27,12 +33,32 @@ export default function CourseEditorPage() {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [price, setPrice] = useState(0);
   const [level, setLevel] = useState<(typeof LEVELS)[number]>("BEGINNER");
+  const [categoryId, setCategoryId] = useState<string>("");
 
   // Curriculum add-forms
   const [newSection, setNewSection] = useState("");
   const [newLesson, setNewLesson] = useState<
     Record<string, { title: string; type: string }>
   >({});
+
+  // Inline edit state
+  const [editingSection, setEditingSection] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [editingLesson, setEditingLesson] = useState<{
+    id: string;
+    title: string;
+    type: string;
+  } | null>(null);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await api.get<Category[]>("/categories");
+      return res.data;
+    },
+  });
 
   const { data: course, isLoading } = useQuery({
     queryKey: ["editor-course", id],
@@ -52,6 +78,7 @@ export default function CourseEditorPage() {
       setThumbnailUrl(course.thumbnailUrl ?? "");
       setPrice(Number(course.price ?? 0));
       setLevel(course.level ?? "BEGINNER");
+      setCategoryId(course.categoryId ?? "");
     }
   }, [course]);
 
@@ -66,6 +93,7 @@ export default function CourseEditorPage() {
         thumbnailUrl: thumbnailUrl || null,
         price,
         level,
+        categoryId: categoryId || null,
       };
       if (isNew) {
         const res = await api.post("/courses", body);
@@ -85,6 +113,9 @@ export default function CourseEditorPage() {
     },
   });
 
+  const invalidateCourse = () =>
+    queryClient.invalidateQueries({ queryKey: ["editor-course", id] });
+
   const addSectionMutation = useMutation({
     mutationFn: async (sectionTitle: string) => {
       await api.post(`/courses/${id}/sections`, {
@@ -94,8 +125,27 @@ export default function CourseEditorPage() {
     },
     onSuccess: () => {
       setNewSection("");
-      queryClient.invalidateQueries({ queryKey: ["editor-course", id] });
+      invalidateCourse();
     },
+  });
+
+  const updateSectionMutation = useMutation({
+    mutationFn: async ({ sectionId, title }: { sectionId: string; title: string }) => {
+      await api.put(`/courses/sections/${sectionId}`, { title });
+    },
+    onSuccess: () => {
+      setEditingSection(null);
+      invalidateCourse();
+    },
+  });
+
+  const deleteSectionMutation = useMutation({
+    mutationFn: async (sectionId: string) => {
+      await api.delete(`/courses/sections/${sectionId}`);
+    },
+    onSuccess: invalidateCourse,
+    onError: (err: any) =>
+      alert(err?.response?.data?.message ?? "Failed to delete section."),
   });
 
   const addLessonMutation = useMutation({
@@ -122,8 +172,35 @@ export default function CourseEditorPage() {
         ...prev,
         [vars.sectionId]: { title: "", type: "VIDEO" },
       }));
-      queryClient.invalidateQueries({ queryKey: ["editor-course", id] });
+      invalidateCourse();
     },
+  });
+
+  const updateLessonMutation = useMutation({
+    mutationFn: async ({
+      lessonId,
+      title,
+      type,
+    }: {
+      lessonId: string;
+      title: string;
+      type: string;
+    }) => {
+      await api.put(`/courses/lessons/${lessonId}`, { title, type });
+    },
+    onSuccess: () => {
+      setEditingLesson(null);
+      invalidateCourse();
+    },
+  });
+
+  const deleteLessonMutation = useMutation({
+    mutationFn: async (lessonId: string) => {
+      await api.delete(`/courses/lessons/${lessonId}`);
+    },
+    onSuccess: invalidateCourse,
+    onError: (err: any) =>
+      alert(err?.response?.data?.message ?? "Failed to delete lesson."),
   });
 
   if (!isNew && isLoading)
@@ -216,6 +293,20 @@ export default function CourseEditorPage() {
                 placeholder="https://..."
               />
             </Field>
+            <Field label="Category">
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">— No category —</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Price ($)">
                 <input
@@ -261,29 +352,194 @@ export default function CourseEditorPage() {
                     title: "",
                     type: "VIDEO",
                   };
+                  const isEditingThisSection =
+                    editingSection?.id === section.id;
                   return (
                     <div
                       key={section.id}
                       className="border border-slate-200 rounded-lg bg-slate-50"
                     >
-                      <div className="p-4 border-b border-slate-200 font-semibold text-slate-800">
-                        Section {section.orderIndex}: {section.title}
+                      {/* Section header */}
+                      <div className="p-4 border-b border-slate-200 flex items-center justify-between gap-2">
+                        {isEditingThisSection ? (
+                          <>
+                            <input
+                              type="text"
+                              value={editingSection.title}
+                              autoFocus
+                              onChange={(e) =>
+                                setEditingSection({
+                                  ...editingSection,
+                                  title: e.target.value,
+                                })
+                              }
+                              className={`${inputCls} flex-1`}
+                            />
+                            <button
+                              onClick={() =>
+                                editingSection.title.trim() &&
+                                updateSectionMutation.mutate({
+                                  sectionId: section.id,
+                                  title: editingSection.title.trim(),
+                                })
+                              }
+                              disabled={updateSectionMutation.isPending}
+                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-md shrink-0"
+                              title="Save"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setEditingSection(null)}
+                              className="p-2 text-slate-500 hover:bg-slate-200 rounded-md shrink-0"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-slate-800">
+                              Section {section.orderIndex}: {section.title}
+                            </span>
+                            <div className="flex items-center shrink-0">
+                              <button
+                                onClick={() =>
+                                  setEditingSection({
+                                    id: section.id,
+                                    title: section.title,
+                                  })
+                                }
+                                className="p-2 text-slate-400 hover:text-blue-600 rounded-md"
+                                title="Rename section"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      `Delete section "${section.title}" and all its lessons?`,
+                                    )
+                                  )
+                                    deleteSectionMutation.mutate(section.id);
+                                }}
+                                disabled={deleteSectionMutation.isPending}
+                                className="p-2 text-slate-400 hover:text-red-600 rounded-md"
+                                title="Delete section"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
+
                       <div className="p-4 space-y-2">
                         {(section.lessons ?? []).map(
-                          (lesson: any, idx: number) => (
-                            <div
-                              key={lesson.id}
-                              className="flex items-center justify-between bg-white border border-slate-200 p-3 rounded-md"
-                            >
-                              <span className="text-sm text-slate-700">
-                                {idx + 1}. {lesson.title}
-                              </span>
-                              <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded">
-                                {lesson.type}
-                              </span>
-                            </div>
-                          ),
+                          (lesson: any, idx: number) => {
+                            const isEditingThisLesson =
+                              editingLesson?.id === lesson.id;
+                            return (
+                              <div
+                                key={lesson.id}
+                                className="flex items-center justify-between bg-white border border-slate-200 p-3 rounded-md gap-2"
+                              >
+                                {isEditingThisLesson ? (
+                                  <>
+                                    <input
+                                      type="text"
+                                      value={editingLesson.title}
+                                      autoFocus
+                                      onChange={(e) =>
+                                        setEditingLesson({
+                                          ...editingLesson,
+                                          title: e.target.value,
+                                        })
+                                      }
+                                      className={`${inputCls} flex-1`}
+                                    />
+                                    <select
+                                      value={editingLesson.type}
+                                      onChange={(e) =>
+                                        setEditingLesson({
+                                          ...editingLesson,
+                                          type: e.target.value,
+                                        })
+                                      }
+                                      className={inputCls}
+                                    >
+                                      <option value="VIDEO">VIDEO</option>
+                                      <option value="ARTICLE">ARTICLE</option>
+                                    </select>
+                                    <button
+                                      onClick={() =>
+                                        editingLesson.title.trim() &&
+                                        updateLessonMutation.mutate({
+                                          lessonId: lesson.id,
+                                          title: editingLesson.title.trim(),
+                                          type: editingLesson.type,
+                                        })
+                                      }
+                                      disabled={updateLessonMutation.isPending}
+                                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-md shrink-0"
+                                      title="Save"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingLesson(null)}
+                                      className="p-2 text-slate-500 hover:bg-slate-200 rounded-md shrink-0"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-sm text-slate-700">
+                                      {idx + 1}. {lesson.title}
+                                    </span>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded">
+                                        {lesson.type}
+                                      </span>
+                                      <button
+                                        onClick={() =>
+                                          setEditingLesson({
+                                            id: lesson.id,
+                                            title: lesson.title,
+                                            type: lesson.type,
+                                          })
+                                        }
+                                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md"
+                                        title="Edit lesson"
+                                      >
+                                        <Pencil className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          if (
+                                            window.confirm(
+                                              `Delete lesson "${lesson.title}"?`,
+                                            )
+                                          )
+                                            deleteLessonMutation.mutate(
+                                              lesson.id,
+                                            );
+                                        }}
+                                        disabled={deleteLessonMutation.isPending}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-md"
+                                        title="Delete lesson"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          },
                         )}
                         {/* Add lesson */}
                         <div className="flex items-center gap-2 pt-2">

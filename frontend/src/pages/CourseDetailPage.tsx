@@ -2,10 +2,12 @@ import { useParams, Link, useNavigate } from "react-router";
 import { PlayCircle, CheckCircle2, Clock, Lock } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import api from "../lib/api";
+import { useAuthStore } from "../store/authStore";
 
 export default function CourseDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
 
   const { data: course, isLoading } = useQuery({
     queryKey: ["course", slug],
@@ -21,7 +23,8 @@ export default function CourseDetailPage() {
       const res = await api.get(`/enrollments/courses/${course.id}/check`);
       return res.data;
     },
-    enabled: !!course?.id,
+    // Endpoint yêu cầu đăng nhập -> chỉ gọi khi đã auth, tránh 401 làm đá về login.
+    enabled: !!course?.id && isAuthenticated,
   });
 
   const firstLessonId = course?.sections?.[0]?.lessons?.[0]?.id;
@@ -38,6 +41,10 @@ export default function CourseDetailPage() {
   });
 
   const handleEnroll = () => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
     if (enrollmentInfo?.enrolled) {
       if (firstLessonId)
         navigate(`/learn/${course.slug}/lesson/${firstLessonId}`);

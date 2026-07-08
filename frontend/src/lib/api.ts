@@ -28,9 +28,16 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
+    // Chỉ đá về /login khi PHIÊN thực sự hết hạn: có token nhưng bị 401.
+    // Khách chưa đăng nhập gặp 401 (vd. gọi /enrollments/.../check) KHÔNG được
+    // đá đi — đó không phải lỗi phiên.
+    if (error.response?.status === 401 && localStorage.getItem("token")) {
       useAuthStore.getState().logout();
-      window.location.href = "/login";
+      // App dùng HashRouter (GitHub Pages) -> phải điều hướng bằng hash route,
+      // không dùng path tuyệt đối "/login" (sẽ ra URL không tồn tại trên Pages).
+      if (!window.location.hash.startsWith("#/login")) {
+        window.location.hash = "#/login";
+      }
     }
     return Promise.reject(error);
   },

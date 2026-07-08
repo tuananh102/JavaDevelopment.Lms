@@ -133,15 +133,24 @@ export default function InstructorDashboardPage() {
                   </Link>
                   {course.status !== "ARCHIVED" && (
                     <button
-                      onClick={() =>
-                        statusMutation.mutate({
-                          id: course.id,
-                          status: "ARCHIVED",
-                        })
-                      }
+                      onClick={() => {
+                        // "Xoá" = archive (đổi status). Hard-delete sẽ vướng khoá
+                        // ngoại khi khoá đã có enrollment; archive an toàn hơn và
+                        // vẫn có thể Publish lại để khôi phục.
+                        if (
+                          window.confirm(
+                            `Archive "${course.title}"? It will be hidden from the catalog. You can publish it again later.`,
+                          )
+                        ) {
+                          statusMutation.mutate({
+                            id: course.id,
+                            status: "ARCHIVED",
+                          });
+                        }
+                      }}
                       disabled={statusMutation.isPending}
                       className="p-2 text-slate-400 hover:text-red-600 transition-colors"
-                      title="Archive course"
+                      title="Delete (archive) course"
                     >
                       <Archive className="w-5 h-5" />
                     </button>
