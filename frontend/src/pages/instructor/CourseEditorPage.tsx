@@ -1,53 +1,139 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Save, Plus, GripVertical, Trash2, Edit } from "lucide-react";
-import { Link } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { useParams, useNavigate, Link } from "react-router";
+import { ArrowLeft, Save, Plus, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../../lib/api";
 
-// Mock structure for UI purposes
-const MOCK_COURSE = {
-  id: "1",
-  title: "Full-Stack Development with Spring Boot 4 & React 19",
-  description: "Learn how to build production-ready full-stack applications...",
-  price: 49.99,
-  level: "INTERMEDIATE",
-  sections: [
-    {
-      id: "s1",
-      title: "Getting Started",
-      orderIndex: 1,
-      lessons: [
-        {
-          id: "l1",
-          title: "Course Introduction",
-          durationSeconds: 300,
-          type: "VIDEO",
-        },
-        {
-          id: "l2",
-          title: "Setting up the Environment",
-          durationSeconds: 720,
-          type: "ARTICLE",
-        },
-      ],
-    },
-  ],
-};
+const LEVELS = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"] as const;
+
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export default function CourseEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isNew = id === "new";
 
-  const [title, setTitle] = useState(isNew ? "" : MOCK_COURSE.title);
-  const [description, setDescription] = useState(
-    isNew ? "" : MOCK_COURSE.description,
-  );
-  const [price, setPrice] = useState(isNew ? 0 : MOCK_COURSE.price);
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [description, setDescription] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [price, setPrice] = useState(0);
+  const [level, setLevel] = useState<(typeof LEVELS)[number]>("BEGINNER");
 
-  const handleSave = () => {
-    // API Call to save
-    navigate("/instructor");
-  };
+  // Curriculum add-forms
+  const [newSection, setNewSection] = useState("");
+  const [newLesson, setNewLesson] = useState<
+    Record<string, { title: string; type: string }>
+  >({});
+
+  const { data: course, isLoading } = useQuery({
+    queryKey: ["editor-course", id],
+    queryFn: async () => {
+      const res = await api.get(`/courses/by-id/${id}`);
+      return res.data;
+    },
+    enabled: !isNew,
+  });
+
+  // Nạp dữ liệu vào form khi tải xong (chế độ edit)
+  useEffect(() => {
+    if (course) {
+      setTitle(course.title ?? "");
+      setSlug(course.slug ?? "");
+      setDescription(course.description ?? "");
+      setThumbnailUrl(course.thumbnailUrl ?? "");
+      setPrice(Number(course.price ?? 0));
+      setLevel(course.level ?? "BEGINNER");
+    }
+  }, [course]);
+
+  const effectiveSlug = isNew && !slugTouched ? slugify(title) : slug;
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const body = {
+        title,
+        slug: effectiveSlug,
+        description,
+        thumbnailUrl: thumbnailUrl || null,
+        price,
+        level,
+      };
+      if (isNew) {
+        const res = await api.post("/courses", body);
+        return res.data;
+      }
+      const res = await api.put(`/courses/${id}`, body);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["instructor-courses"] });
+      if (isNew) {
+        // Chuyển sang chế độ edit để thêm curriculum
+        navigate(`/instructor/course/${data.id}`);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["editor-course", id] });
+      }
+    },
+  });
+
+  const addSectionMutation = useMutation({
+    mutationFn: async (sectionTitle: string) => {
+      await api.post(`/courses/${id}/sections`, {
+        title: sectionTitle,
+        orderIndex: (course?.sections?.length ?? 0) + 1,
+      });
+    },
+    onSuccess: () => {
+      setNewSection("");
+      queryClient.invalidateQueries({ queryKey: ["editor-course", id] });
+    },
+  });
+
+  const addLessonMutation = useMutation({
+    mutationFn: async ({
+      sectionId,
+      title: lessonTitle,
+      type,
+      order,
+    }: {
+      sectionId: string;
+      title: string;
+      type: string;
+      order: number;
+    }) => {
+      await api.post(`/courses/sections/${sectionId}/lessons`, {
+        title: lessonTitle,
+        type,
+        durationSeconds: 0,
+        orderIndex: order,
+      });
+    },
+    onSuccess: (_data, vars) => {
+      setNewLesson((prev) => ({
+        ...prev,
+        [vars.sectionId]: { title: "", type: "VIDEO" },
+      }));
+      queryClient.invalidateQueries({ queryKey: ["editor-course", id] });
+    },
+  });
+
+  if (!isNew && isLoading)
+    return (
+      <div className="flex items-center justify-center py-24 text-slate-500">
+        <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading course...
+      </div>
+    );
+
+  const canSave = title.trim() && effectiveSlug.trim() && !saveMutation.isPending;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -64,13 +150,25 @@ export default function CourseEditorPage() {
           </h1>
         </div>
         <button
-          onClick={handleSave}
-          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+          onClick={() => saveMutation.mutate()}
+          disabled={!canSave}
+          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50"
         >
-          <Save className="w-5 h-5 mr-2" />
-          Save Changes
+          {saveMutation.isPending ? (
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-5 h-5 mr-2" />
+          )}
+          {isNew ? "Create Course" : "Save Changes"}
         </button>
       </div>
+
+      {saveMutation.isError && (
+        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+          Save failed. Check that the slug is unique and all required fields are
+          filled.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Basic Info */}
@@ -79,115 +177,214 @@ export default function CourseEditorPage() {
             <h2 className="font-semibold text-slate-800 text-lg border-b border-slate-100 pb-2">
               Basic Info
             </h2>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Course Title
-              </label>
+            <Field label="Course Title">
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={inputCls}
                 placeholder="E.g. Advanced React Patterns"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Description
-              </label>
+            </Field>
+            <Field label="Slug (URL)">
+              <input
+                type="text"
+                value={effectiveSlug}
+                onChange={(e) => {
+                  setSlugTouched(true);
+                  setSlug(e.target.value);
+                }}
+                className={inputCls}
+                placeholder="advanced-react-patterns"
+              />
+            </Field>
+            <Field label="Description">
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={inputCls}
                 placeholder="What will students learn?"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Price ($)
-              </label>
+            </Field>
+            <Field label="Thumbnail URL">
               <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                type="text"
+                value={thumbnailUrl}
+                onChange={(e) => setThumbnailUrl(e.target.value)}
+                className={inputCls}
+                placeholder="https://..."
               />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Price ($)">
+                <input
+                  type="number"
+                  min={0}
+                  value={price}
+                  onChange={(e) => setPrice(Number(e.target.value))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Level">
+                <select
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value as any)}
+                  className={inputCls}
+                >
+                  {LEVELS.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
           </div>
         </div>
 
-        {/* Curriculum Builder */}
+        {/* Curriculum */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-semibold text-slate-800 text-lg">
-                Curriculum
-              </h2>
-              <button className="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center">
-                <Plus className="w-4 h-4 mr-1" /> Add Section
-              </button>
-            </div>
+            <h2 className="font-semibold text-slate-800 text-lg mb-6">
+              Curriculum
+            </h2>
 
-            {!isNew &&
-              MOCK_COURSE.sections.map((section) => (
-                <div
-                  key={section.id}
-                  className="border border-slate-200 rounded-lg mb-4 bg-slate-50"
-                >
-                  <div className="p-4 flex items-center justify-between border-b border-slate-200">
-                    <div className="flex items-center space-x-3">
-                      <GripVertical className="w-5 h-5 text-slate-400 cursor-move" />
-                      <span className="font-semibold text-slate-800">
+            {isNew ? (
+              <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                Save the course first to start adding sections and lessons.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {(course?.sections ?? []).map((section: any) => {
+                  const draft = newLesson[section.id] ?? {
+                    title: "",
+                    type: "VIDEO",
+                  };
+                  return (
+                    <div
+                      key={section.id}
+                      className="border border-slate-200 rounded-lg bg-slate-50"
+                    >
+                      <div className="p-4 border-b border-slate-200 font-semibold text-slate-800">
                         Section {section.orderIndex}: {section.title}
-                      </span>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button className="p-1 text-slate-400 hover:text-indigo-600">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-1 text-slate-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-2">
-                    {section.lessons.map((lesson, idx) => (
-                      <div
-                        key={lesson.id}
-                        className="flex items-center justify-between bg-white border border-slate-200 p-3 rounded-md"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <GripVertical className="w-4 h-4 text-slate-400 cursor-move" />
-                          <span className="text-sm text-slate-700">
-                            Lesson {idx + 1}: {lesson.title}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded">
-                            {lesson.type}
-                          </span>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button className="p-1 text-slate-400 hover:text-indigo-600">
-                            <Edit className="w-4 h-4" />
+                      </div>
+                      <div className="p-4 space-y-2">
+                        {(section.lessons ?? []).map(
+                          (lesson: any, idx: number) => (
+                            <div
+                              key={lesson.id}
+                              className="flex items-center justify-between bg-white border border-slate-200 p-3 rounded-md"
+                            >
+                              <span className="text-sm text-slate-700">
+                                {idx + 1}. {lesson.title}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded">
+                                {lesson.type}
+                              </span>
+                            </div>
+                          ),
+                        )}
+                        {/* Add lesson */}
+                        <div className="flex items-center gap-2 pt-2">
+                          <input
+                            type="text"
+                            value={draft.title}
+                            onChange={(e) =>
+                              setNewLesson((prev) => ({
+                                ...prev,
+                                [section.id]: {
+                                  ...draft,
+                                  title: e.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="New lesson title"
+                            className={`${inputCls} flex-1`}
+                          />
+                          <select
+                            value={draft.type}
+                            onChange={(e) =>
+                              setNewLesson((prev) => ({
+                                ...prev,
+                                [section.id]: {
+                                  ...draft,
+                                  type: e.target.value,
+                                },
+                              }))
+                            }
+                            className={inputCls}
+                          >
+                            <option value="VIDEO">VIDEO</option>
+                            <option value="ARTICLE">ARTICLE</option>
+                          </select>
+                          <button
+                            onClick={() =>
+                              draft.title.trim() &&
+                              addLessonMutation.mutate({
+                                sectionId: section.id,
+                                title: draft.title.trim(),
+                                type: draft.type,
+                                order: (section.lessons?.length ?? 0) + 1,
+                              })
+                            }
+                            disabled={addLessonMutation.isPending}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-md shrink-0"
+                            title="Add lesson"
+                          >
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
-                    ))}
-                    <button className="mt-2 text-sm font-medium text-slate-500 hover:text-indigo-600 flex items-center px-2 py-1">
-                      <Plus className="w-4 h-4 mr-1" /> Add Lesson
-                    </button>
-                  </div>
-                </div>
-              ))}
+                    </div>
+                  );
+                })}
 
-            {isNew && (
-              <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                Save the course first to start adding sections and lessons.
+                {/* Add section */}
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    type="text"
+                    value={newSection}
+                    onChange={(e) => setNewSection(e.target.value)}
+                    placeholder="New section title"
+                    className={`${inputCls} flex-1`}
+                  />
+                  <button
+                    onClick={() =>
+                      newSection.trim() &&
+                      addSectionMutation.mutate(newSection.trim())
+                    }
+                    disabled={addSectionMutation.isPending}
+                    className="flex items-center px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg shrink-0"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Section
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+const inputCls =
+  "w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white";
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        {label}
+      </label>
+      {children}
     </div>
   );
 }

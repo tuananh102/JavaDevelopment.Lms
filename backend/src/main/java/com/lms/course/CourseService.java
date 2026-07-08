@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,40 @@ public class CourseService {
         Course course = courseRepository.findBySlug(slug)
                 .orElseThrow(() -> new IllegalArgumentException("Course not found"));
         return mapToDetailDto(course);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CourseDto> getCoursesByInstructor(UUID instructorId) {
+        return courseRepository.findByInstructorId(instructorId)
+                .stream().map(this::mapToDto).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public CourseDetailDto getCourseById(UUID id) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+        return mapToDetailDto(course);
+    }
+
+    @Transactional
+    public CourseDto updateCourse(UUID id, CourseCreateRequest request, UUID userId) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+
+        // Verify instructor owns the course
+        if (!course.getInstructor().getId().equals(userId)) {
+            throw new IllegalArgumentException("You don't have permission to modify this course");
+        }
+
+        course.setTitle(request.getTitle());
+        course.setSlug(request.getSlug());
+        course.setDescription(request.getDescription());
+        course.setThumbnailUrl(request.getThumbnailUrl());
+        course.setPrice(request.getPrice());
+        course.setLevel(request.getLevel());
+        course.setCategoryId(request.getCategoryId());
+
+        return mapToDto(courseRepository.save(course));
     }
 
     @Transactional

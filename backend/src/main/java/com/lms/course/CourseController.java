@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,9 +38,33 @@ public class CourseController {
         return ResponseEntity.ok(courseService.getPublishedCourses(categoryId, pageable));
     }
 
+    // Khoá của instructor đang đăng nhập (mọi trạng thái). Đặt TRƯỚC /{slug} nhưng
+    // Spring vẫn ưu tiên path literal "instructor" hơn biến {slug} nên không xung đột.
+    @GetMapping("/instructor")
+    @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
+    public ResponseEntity<List<CourseDto>> getMyCourses(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(courseService.getCoursesByInstructor(userDetails.getId()));
+    }
+
+    // Lấy chi tiết theo id (cho trang editor của instructor).
+    @GetMapping("/by-id/{id}")
+    public ResponseEntity<CourseDetailDto> getCourseById(@PathVariable UUID id) {
+        return ResponseEntity.ok(courseService.getCourseById(id));
+    }
+
     @GetMapping("/{slug}")
     public ResponseEntity<CourseDetailDto> getCourseBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(courseService.getCourseBySlug(slug));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
+    public ResponseEntity<CourseDto> updateCourse(
+            @PathVariable UUID id,
+            @Valid @RequestBody CourseCreateRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(courseService.updateCourse(id, request, userDetails.getId()));
     }
 
     @PostMapping

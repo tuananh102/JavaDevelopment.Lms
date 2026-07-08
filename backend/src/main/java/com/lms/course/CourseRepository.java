@@ -7,14 +7,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, UUID> {
-    
+
     Optional<Course> findBySlug(String slug);
-    
+
+    // Khoá của một instructor (mọi trạng thái, kể cả DRAFT) cho trang quản lý.
+    @Query("SELECT c FROM Course c WHERE c.instructor.id = :instructorId ORDER BY c.createdAt DESC")
+    List<Course> findByInstructorId(@Param("instructorId") UUID instructorId);
+
     @Query("SELECT c FROM Course c WHERE c.status = 'PUBLISHED' AND (:categoryId IS NULL OR c.categoryId = :categoryId)")
     Page<Course> findPublishedCourses(@Param("categoryId") UUID categoryId, Pageable pageable);
 }
