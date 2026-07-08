@@ -1,39 +1,60 @@
+import { useState } from "react";
 import { Link } from "react-router";
-import { Clock, BookOpen, Star } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { BookOpen, Loader2, AlertCircle } from "lucide-react";
+import api from "../lib/api";
 
-// Mock data to visualize the UI
-const MOCK_COURSES = [
-  {
-    id: "1",
-    slug: "spring-boot-react-fullstack",
-    title: "Full-Stack Development with Spring Boot 4 & React 19",
-    description:
-      "Learn how to build production-ready full-stack applications using the latest tech stack.",
-    thumbnail:
-      "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=600&auto=format&fit=crop",
-    price: 49.99,
-    level: "INTERMEDIATE",
-    lessonsCount: 42,
-    duration: "15h 30m",
-    category: "Web Development",
-  },
-  {
-    id: "2",
-    slug: "advanced-java-25",
-    title: "Advanced Java 25 & Project Loom",
-    description:
-      "Master virtual threads, pattern matching, and record patterns in the newest LTS release.",
-    thumbnail:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=600&auto=format&fit=crop",
-    price: 0,
-    level: "ADVANCED",
-    lessonsCount: 18,
-    duration: "5h 45m",
-    category: "Backend",
-  },
-];
+// Khớp với CourseDto ở backend (GET /api/v1/courses trả Page<CourseDto>)
+interface Course {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  thumbnailUrl: string | null;
+  price: number;
+  level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL_LEVELS";
+  categoryId: string | null;
+  instructorId: string;
+}
+
+interface Page<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+}
+
+const LEVEL_LABEL: Record<Course["level"], string> = {
+  BEGINNER: "Beginner",
+  INTERMEDIATE: "Intermediate",
+  ADVANCED: "Advanced",
+  ALL_LEVELS: "All levels",
+};
+
+const FALLBACK_THUMB =
+  "https://placehold.co/600x400/e2e8f0/64748b?text=Course";
 
 export default function CatalogPage() {
+  const [search, setSearch] = useState("");
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["courses"],
+    queryFn: async () => {
+      const res = await api.get<Page<Course>>("/courses", {
+        params: { size: 50, sort: "createdAt,desc" },
+      });
+      return res.data;
+    },
+  });
+
+  const courses = (data?.content ?? []).filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.title.toLowerCase().includes(q) ||
+      c.description.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -43,73 +64,76 @@ export default function CatalogPage() {
             Find the right course to advance your career.
           </p>
         </div>
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            placeholder="Search courses..."
-            className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <select className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-            <option>All Categories</option>
-            <option>Web Development</option>
-            <option>Backend</option>
-          </select>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search courses..."
+          className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-24 text-slate-500">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading courses...
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {MOCK_COURSES.map((course) => (
-          <Link
-            to={`/courses/${course.slug}`}
-            key={course.id}
-            className="group flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow"
-          >
-            <div className="aspect-video w-full overflow-hidden">
-              <img
-                src={course.thumbnail}
-                alt={course.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-            <div className="p-5 flex flex-col flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">
-                  {course.category}
-                </span>
-                <span className="text-xs font-medium text-slate-500 flex items-center">
-                  <Star className="w-3 h-3 text-amber-400 mr-1 fill-amber-400" />
-                  4.8
-                </span>
-              </div>
-              <h3 className="font-bold text-lg text-slate-900 line-clamp-2 mb-2 group-hover:text-indigo-600 transition-colors">
-                {course.title}
-              </h3>
-              <p className="text-slate-600 text-sm line-clamp-2 mb-4 flex-1">
-                {course.description}
-              </p>
+      {isError && (
+        <div className="flex items-center justify-center py-24 text-red-600">
+          <AlertCircle className="w-6 h-6 mr-2" /> Failed to load courses. Please
+          try again later.
+        </div>
+      )}
 
-              <div className="flex items-center text-sm text-slate-500 space-x-4 mb-4">
-                <span className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1" /> {course.duration}
-                </span>
-                <span className="flex items-center">
-                  <BookOpen className="w-4 h-4 mr-1" /> {course.lessonsCount}{" "}
-                  lessons
-                </span>
-              </div>
+      {!isLoading && !isError && courses.length === 0 && (
+        <div className="text-center py-24 text-slate-500">
+          No courses found.
+        </div>
+      )}
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-                <span className="font-bold text-lg text-slate-900">
-                  {course.price === 0 ? "Free" : `$${course.price}`}
-                </span>
-                <span className="text-sm font-medium text-indigo-600 group-hover:underline">
-                  View details →
-                </span>
+      {!isLoading && !isError && courses.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <Link
+              to={`/courses/${course.slug}`}
+              key={course.id}
+              className="group flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow"
+            >
+              <div className="aspect-video w-full overflow-hidden bg-slate-100">
+                <img
+                  src={course.thumbnailUrl || FALLBACK_THUMB}
+                  alt={course.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
               </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+              <div className="p-5 flex flex-col flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md flex items-center">
+                    <BookOpen className="w-3 h-3 mr-1" />
+                    {LEVEL_LABEL[course.level] ?? course.level}
+                  </span>
+                </div>
+                <h3 className="font-bold text-lg text-slate-900 line-clamp-2 mb-2 group-hover:text-indigo-600 transition-colors">
+                  {course.title}
+                </h3>
+                <p className="text-slate-600 text-sm line-clamp-2 mb-4 flex-1">
+                  {course.description}
+                </p>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
+                  <span className="font-bold text-lg text-slate-900">
+                    {course.price === 0 ? "Free" : `$${course.price}`}
+                  </span>
+                  <span className="text-sm font-medium text-indigo-600 group-hover:underline">
+                    View details →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
