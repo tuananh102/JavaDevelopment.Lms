@@ -3,6 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main", "master"]
+    paths:
+      # Chỉ chạy khi có thay đổi ở frontend hoặc chính workflow này
+      - 'frontend/**'
+      - '.github/workflows/main.yml'
+  workflow_dispatch:   # cho phép chạy tay từ tab Actions (kể cả khi không đổi code)
 
 permissions:
   contents: read

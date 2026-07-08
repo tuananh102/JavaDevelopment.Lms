@@ -7,7 +7,11 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+    paths:
+      # Chỉ chạy khi có thay đổi ở backend hoặc chính workflow này
+      - 'backend/**'
+      - '.github/workflows/main_hcmute-lms.yml'
+  workflow_dispatch:   # cho phép chạy tay từ tab Actions (kể cả khi không đổi code)
 
 jobs:
   build:
