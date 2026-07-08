@@ -14,7 +14,10 @@ spring:
         format_sql: true
   flyway:
     enabled: true
-    baseline-on-migrate: true
+    # KHÔNG bật baseline-on-migrate cho DB do Flyway quản lý từ đầu:
+    # nó sẽ baseline ở version 1 và bỏ qua V1 (file CREATE TABLE) khi schema
+    # bị coi là "không rỗng", dẫn tới thiếu bảng.
+    baseline-version: 0
 
 jwt:
   # Production: đặt JWT_SECRET trên Azure (>= 32 bytes). Default chỉ dùng cho local dev.
