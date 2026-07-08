@@ -1,8 +1,10 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 
+// Local dev: VITE_API_URL trống -> "/api/v1" đi qua mock server (server.ts).
+// Production: .env.production đặt VITE_API_URL trỏ tới backend Azure.
 const api = axios.create({
-  baseURL: "/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "/api/v1",
   headers: {
     "Content-Type": "application/json",
   },

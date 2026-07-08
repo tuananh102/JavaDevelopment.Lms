@@ -39,9 +39,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # API Key lấy từ GitHub Secrets — KHÔNG hardcode trực tiếp vào file.
-          # Đổi VITE_API_KEY cho khớp tên biến bạn dùng trong code.
-          VITE_API_KEY: ${{ secrets.GG_STUDIO_API_KEY }}
+          # URL backend Azure, nhúng vào bundle lúc build (GitHub Pages là static).
+          # .env.production ở local bị gitignore nên không tới được CI -> đặt ở đây.
+          VITE_API_URL: https://hcmute-lms.azurewebsites.net/api/v1
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
