@@ -1,7 +1,9 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Dùng gen_random_uuid() (built-in PostgreSQL 13+) thay cho uuid-ossp:
+-- không cần CREATE EXTENSION nên chạy được cả trên Azure Database for PostgreSQL
+-- (nơi extension uuid-ossp bị chặn nếu không allow-list).
 
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
@@ -13,14 +15,14 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 
 CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL
 );
 CREATE INDEX idx_categories_slug ON categories(slug);
 
 CREATE TABLE courses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
@@ -38,7 +40,7 @@ CREATE INDEX idx_courses_instructor ON courses(instructor_id);
 CREATE INDEX idx_courses_slug ON courses(slug);
 
 CREATE TABLE sections (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     order_index INT NOT NULL
@@ -46,7 +48,7 @@ CREATE TABLE sections (
 CREATE INDEX idx_sections_course ON sections(course_id);
 
 CREATE TABLE lessons (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     section_id UUID NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL, -- VIDEO, ARTICLE
@@ -58,7 +60,7 @@ CREATE TABLE lessons (
 CREATE INDEX idx_lessons_section ON lessons(section_id);
 
 CREATE TABLE enrollments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
     course_id UUID NOT NULL REFERENCES courses(id),
     enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -70,7 +72,7 @@ CREATE INDEX idx_enrollments_user ON enrollments(user_id);
 CREATE INDEX idx_enrollments_course ON enrollments(course_id);
 
 CREATE TABLE lesson_progress (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     enrollment_id UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
     lesson_id UUID NOT NULL REFERENCES lessons(id),
     status VARCHAR(50) NOT NULL, -- NOT_STARTED, IN_PROGRESS, COMPLETED
