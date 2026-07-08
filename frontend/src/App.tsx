@@ -22,7 +22,7 @@ export default function App() {
         <Route path="/instructor/course/:id" element={<CourseEditorPage />} />
       </Route>
       <Route
-        path="/learn/:courseId/lesson/:lessonId"
+        path="/learn/:slug/lesson/:lessonId"
         element={<LearningPage />}
       />
     </Routes>

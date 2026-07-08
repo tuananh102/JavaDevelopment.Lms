@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Menu,
   X,
-  PlayCircle
+  PlayCircle,
 } from "lucide-react";
 import * as Progress from "@radix-ui/react-progress";
 import { clsx } from "clsx";
@@ -21,27 +21,30 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 export default function LearningPage() {
-  const { courseId, lessonId } = useParams();
+  const { slug, lessonId } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const queryClient = useQueryClient();
 
   const { data: course, isLoading: loadingCourse } = useQuery({
-    queryKey: ["course-by-id", courseId],
+    queryKey: ["course", slug],
     queryFn: async () => {
-      // In a real app we'd fetch by ID. Here the mock uses slug for the API but the mock server returns the same course.
-      const res = await api.get(`/courses/spring-boot-react-fullstack`);
+      const res = await api.get(`/courses/${slug}`);
       return res.data;
     },
+    enabled: !!slug,
   });
 
-  const { data: completedLessonIds = [], isLoading: loadingProgress } = useQuery({
-    queryKey: ["progress", courseId],
-    queryFn: async () => {
-      const res = await api.get(`/progress/courses/${courseId}/completed`);
-      return res.data;
-    },
-    enabled: !!courseId,
-  });
+  const courseId = course?.id;
+
+  const { data: completedLessonIds = [], isLoading: loadingProgress } =
+    useQuery({
+      queryKey: ["progress", courseId],
+      queryFn: async () => {
+        const res = await api.get(`/progress/courses/${courseId}/completed`);
+        return res.data as string[];
+      },
+      enabled: !!courseId,
+    });
 
   const completeMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -53,20 +56,43 @@ export default function LearningPage() {
     },
   });
 
-  if (loadingCourse || loadingProgress) return <div className="p-8 text-white bg-slate-900 h-screen">Loading lesson...</div>;
-  if (!course) return <div className="p-8 text-white bg-slate-900 h-screen">Course not found</div>;
+  if (loadingCourse || loadingProgress)
+    return (
+      <div className="p-8 text-white bg-slate-900 h-screen">
+        Loading lesson...
+      </div>
+    );
+  if (!course)
+    return (
+      <div className="p-8 text-white bg-slate-900 h-screen">
+        Course not found
+      </div>
+    );
 
   let allLessons: any[] = [];
-  course.sections.forEach((s: any) => {
-    allLessons = [...allLessons, ...s.lessons];
+  (course.sections ?? []).forEach((s: any) => {
+    allLessons = [...allLessons, ...(s.lessons ?? [])];
   });
 
-  const currentLessonIndex = allLessons.findIndex((l) => l.id === lessonId);
-  const currentLesson = allLessons[currentLessonIndex] || allLessons[0];
-  
+  if (allLessons.length === 0)
+    return (
+      <div className="p-8 text-white bg-slate-900 h-screen">
+        This course has no lessons yet.
+      </div>
+    );
+
+  const currentLessonIndex = Math.max(
+    0,
+    allLessons.findIndex((l) => l.id === lessonId),
+  );
+  const currentLesson = allLessons[currentLessonIndex];
+
   const isCompleted = completedLessonIds.includes(currentLesson.id);
   const totalLessons = allLessons.length;
-  const progressPercent = totalLessons > 0 ? Math.round((completedLessonIds.length / totalLessons) * 100) : 0;
+  const progressPercent =
+    totalLessons > 0
+      ? Math.round((completedLessonIds.length / totalLessons) * 100)
+      : 0;
 
   const markComplete = () => {
     if (!isCompleted) {
@@ -74,8 +100,12 @@ export default function LearningPage() {
     }
   };
 
-  const prevLesson = currentLessonIndex > 0 ? allLessons[currentLessonIndex - 1] : null;
-  const nextLesson = currentLessonIndex < allLessons.length - 1 ? allLessons[currentLessonIndex + 1] : null;
+  const prevLesson =
+    currentLessonIndex > 0 ? allLessons[currentLessonIndex - 1] : null;
+  const nextLesson =
+    currentLessonIndex < allLessons.length - 1
+      ? allLessons[currentLessonIndex + 1]
+      : null;
 
   return (
     <div className="h-screen w-full flex flex-col bg-white overflow-hidden">
@@ -127,13 +157,23 @@ export default function LearningPage() {
         <main className="flex-1 flex flex-col relative overflow-y-auto bg-slate-50">
           {currentLesson.type === "VIDEO" && (
             <div className="w-full aspect-video bg-black flex items-center justify-center shrink-0">
-              <div className="text-white text-center flex flex-col items-center">
-                <PlayCircle className="w-16 h-16 text-slate-600 mb-4" />
-                <p className="text-slate-400 mb-2">Video Player Placeholder</p>
-                <p className="font-mono text-sm bg-slate-800 px-3 py-1 rounded">
-                  {currentLesson.title}
-                </p>
-              </div>
+              {currentLesson.contentUrl ? (
+                <iframe
+                  src={currentLesson.contentUrl}
+                  title={currentLesson.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <div className="text-white text-center flex flex-col items-center">
+                  <PlayCircle className="w-16 h-16 text-slate-600 mb-4" />
+                  <p className="text-slate-400 mb-2">No video for this lesson</p>
+                  <p className="font-mono text-sm bg-slate-800 px-3 py-1 rounded">
+                    {currentLesson.title}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -146,7 +186,7 @@ export default function LearningPage() {
                 onClick={markComplete}
                 disabled={completeMutation.isPending || isCompleted}
                 className={cn(
-                  "flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-colors border",
+                  "flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-colors border shrink-0",
                   isCompleted
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default"
                     : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
@@ -159,39 +199,49 @@ export default function LearningPage() {
                   </>
                 ) : (
                   <>
-                    <Circle className="w-4 h-4 mr-2 text-slate-400" /> Mark as Complete
+                    <Circle className="w-4 h-4 mr-2 text-slate-400" /> Mark as
+                    Complete
                   </>
                 )}
               </button>
             </div>
 
-            <div className="prose prose-slate max-w-none">
-              <p>
-                Welcome to this lesson on <strong>{currentLesson.title}</strong>. 
-                Please watch the video above or read the provided materials to understand the concepts.
-              </p>
+            <div className="prose prose-slate max-w-none whitespace-pre-line">
+              {currentLesson.contentText ? (
+                <p>{currentLesson.contentText}</p>
+              ) : (
+                <p>
+                  Welcome to this lesson on{" "}
+                  <strong>{currentLesson.title}</strong>. Xem video phía trên
+                  hoặc đọc tài liệu để nắm nội dung.
+                </p>
+              )}
             </div>
           </div>
 
           {/* Bottom Navigation */}
           <div className="mt-auto border-t border-slate-200 bg-white p-4 flex justify-between items-center shrink-0">
             {prevLesson ? (
-              <Link 
-                to={`/learn/${courseId}/lesson/${prevLesson.id}`}
+              <Link
+                to={`/learn/${slug}/lesson/${prevLesson.id}`}
                 className="flex items-center text-slate-600 hover:text-slate-900 font-medium text-sm px-4 py-2"
               >
                 <ChevronLeft className="w-5 h-5 mr-1" /> Previous Lesson
               </Link>
-            ) : <div />}
-            
+            ) : (
+              <div />
+            )}
+
             {nextLesson ? (
-              <Link 
-                to={`/learn/${courseId}/lesson/${nextLesson.id}`}
+              <Link
+                to={`/learn/${slug}/lesson/${nextLesson.id}`}
                 className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm px-4 py-2 bg-indigo-50 rounded-lg"
               >
                 Next Lesson <ChevronRight className="w-5 h-5 ml-1" />
               </Link>
-            ) : <div />}
+            ) : (
+              <div />
+            )}
           </div>
         </main>
 
@@ -199,7 +249,9 @@ export default function LearningPage() {
         <aside
           className={cn(
             "w-80 bg-white border-l border-slate-200 flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out absolute md:relative h-full z-20",
-            sidebarOpen ? "right-0" : "-right-80 md:right-0 md:w-0 md:hidden",
+            sidebarOpen
+              ? "right-0"
+              : "-right-80 md:right-0 md:w-0 md:hidden",
           )}
         >
           <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
@@ -213,25 +265,27 @@ export default function LearningPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {course.sections.map((section: any) => (
+            {(course.sections ?? []).map((section: any) => (
               <div key={section.id} className="border-b border-slate-100">
                 <div className="px-4 py-3 bg-white font-semibold text-sm text-slate-800">
                   Section {section.orderIndex}: {section.title}
                 </div>
                 <div>
-                  {section.lessons.map((lesson: any) => {
-                    const isLessonComplete = completedLessonIds.includes(lesson.id);
+                  {(section.lessons ?? []).map((lesson: any) => {
+                    const isLessonComplete = completedLessonIds.includes(
+                      lesson.id,
+                    );
                     const isActive = currentLesson.id === lesson.id;
-                    
+
                     return (
                       <Link
                         key={lesson.id}
-                        to={`/learn/${courseId}/lesson/${lesson.id}`}
+                        to={`/learn/${slug}/lesson/${lesson.id}`}
                         className={cn(
                           "flex items-center px-4 py-3 border-l-2",
-                          isActive 
-                            ? "bg-indigo-50 border-indigo-600" 
-                            : "hover:bg-slate-50 border-transparent"
+                          isActive
+                            ? "bg-indigo-50 border-indigo-600"
+                            : "hover:bg-slate-50 border-transparent",
                         )}
                       >
                         {isLessonComplete ? (
@@ -239,10 +293,14 @@ export default function LearningPage() {
                         ) : (
                           <Circle className="w-4 h-4 mr-3 text-slate-300 shrink-0" />
                         )}
-                        <span className={cn(
-                          "text-sm line-clamp-2",
-                          isActive ? "font-medium text-indigo-900" : "text-slate-600"
-                        )}>
+                        <span
+                          className={cn(
+                            "text-sm line-clamp-2",
+                            isActive
+                              ? "font-medium text-indigo-900"
+                              : "text-slate-600",
+                          )}
+                        >
                           {lesson.orderIndex}. {lesson.title}
                         </span>
                       </Link>

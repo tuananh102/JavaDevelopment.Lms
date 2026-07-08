@@ -24,19 +24,23 @@ export default function CourseDetailPage() {
     enabled: !!course?.id,
   });
 
+  const firstLessonId = course?.sections?.[0]?.lessons?.[0]?.id;
+
   const enrollMutation = useMutation({
     mutationFn: async () => {
       const res = await api.post(`/enrollments/courses/${course.id}`);
       return res.data;
     },
     onSuccess: () => {
-      navigate(`/learn/${course.id}/lesson/${course.sections[0].lessons[0].id}`);
+      if (firstLessonId)
+        navigate(`/learn/${course.slug}/lesson/${firstLessonId}`);
     },
   });
 
   const handleEnroll = () => {
     if (enrollmentInfo?.enrolled) {
-      navigate(`/learn/${course.id}/lesson/${course.sections[0].lessons[0].id}`);
+      if (firstLessonId)
+        navigate(`/learn/${course.slug}/lesson/${firstLessonId}`);
     } else {
       enrollMutation.mutate();
     }
@@ -125,7 +129,7 @@ export default function CourseDetailPage() {
           </div>
           <div className="p-6">
             <div className="text-3xl font-bold text-slate-900 mb-6">
-              ${course.price}
+              {course.price === 0 ? "Free" : `$${course.price}`}
             </div>
             <button
               onClick={handleEnroll}
