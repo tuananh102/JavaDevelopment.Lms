@@ -9,7 +9,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18 lưu data trong thư mục con theo version, nên mount ở thư mục cha
+      # (postgres <=17 dùng /var/lib/postgresql/data)
+      - pgdata:/var/lib/postgresql
     restart: unless-stopped
 
 volumes:

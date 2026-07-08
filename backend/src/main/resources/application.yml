@@ -1,8 +1,9 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/lms_db
-    username: lms_user
-    password: lms_password
+    # Local dev dùng default sau dấu ':'. Trên Azure đặt biến môi trường cùng tên để override.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/lms_db}
+    username: ${SPRING_DATASOURCE_USERNAME:lms_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:lms_password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -16,6 +17,7 @@ spring:
     baseline-on-migrate: true
 
 jwt:
-  secret: "YOUR_SUPER_SECRET_KEY_WHICH_SHOULD_BE_AT_LEAST_32_BYTES_LONG_FOR_HMAC_SHA256"
-  expiration-ms: 86400000 # 24 hours
-  refresh-expiration-ms: 604800000 # 7 days
+  # Production: đặt JWT_SECRET trên Azure (>= 32 bytes). Default chỉ dùng cho local dev.
+  secret: ${JWT_SECRET:local-dev-only-secret-change-me-min-32-bytes}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 hour
+  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000} # 7 days

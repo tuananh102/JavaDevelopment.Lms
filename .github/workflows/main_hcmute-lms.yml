@@ -57,6 +57,25 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_8657E265B5C5412EA3124F18D27AA4F6 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_1D04CC3F43C341EA8C3F45E22F54063B }}
 
+      # Tự động đẩy MỌI secret/variable có tiền tố "APP_" lên App Service settings.
+      # Quy ước: đặt tên trên GitHub là APP_<TÊN_BIẾN> (vd APP_JWT_SECRET) ->
+      # Azure nhận biến <TÊN_BIẾN> (JWT_SECRET) sau khi cắt tiền tố.
+      # Thêm biến mới sau này chỉ cần tạo secret/variable trên GitHub, KHÔNG sửa file này.
+      - name: Apply App Service settings from GitHub (prefix APP_)
+        env:
+          SECRETS_JSON: ${{ toJSON(secrets) }}   # tất cả secrets (nhạy cảm: password, JWT...)
+          VARS_JSON: ${{ toJSON(vars) }}         # tất cả variables (không nhạy cảm: URL, username...)
+        run: |
+          RG=$(az webapp list --query "[?name=='hcmute-lms'].resourceGroup | [0]" -o tsv)
+          # Gộp vars + secrets, chỉ lấy key có tiền tố APP_, cắt tiền tố, xuất dạng Azure cần
+          jq -n --argjson s "$SECRETS_JSON" --argjson v "$VARS_JSON" '
+            ($v + $s) | to_entries
+            | map(select(.key | startswith("APP_")))
+            | map({name: (.key | ltrimstr("APP_")), value: .value, slotSetting: false})
+          ' > appsettings.json
+          echo "Đẩy $(jq length appsettings.json) biến lên hcmute-lms (RG=$RG)"
+          az webapp config appsettings set --name hcmute-lms --resource-group "$RG" --settings @appsettings.json
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
