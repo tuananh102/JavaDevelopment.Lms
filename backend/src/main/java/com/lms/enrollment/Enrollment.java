@@ -36,9 +36,11 @@ public class Enrollment {
     @Column(name = "enrolled_at", updatable = false)
     private OffsetDateTime enrolledAt;
 
+    @Builder.Default
     @Column(name = "completed_lessons_count", nullable = false)
     private Integer completedLessonsCount = 0;
 
+    @Builder.Default
     @Column(name = "is_completed", nullable = false)
     private boolean isCompleted = false;
 }

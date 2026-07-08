@@ -30,6 +30,7 @@ public class Section {
     @Column(name = "order_index", nullable = false)
     private Integer orderIndex;
 
+    @Builder.Default
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orderIndex ASC")
     private List<Lesson> lessons = new ArrayList<>();

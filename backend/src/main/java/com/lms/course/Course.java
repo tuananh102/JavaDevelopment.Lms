@@ -56,6 +56,7 @@ public class Course {
     @JoinColumn(name = "instructor_id", nullable = false)
     private User instructor;
 
+    @Builder.Default
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orderIndex ASC")
     private List<Section> sections = new ArrayList<>();

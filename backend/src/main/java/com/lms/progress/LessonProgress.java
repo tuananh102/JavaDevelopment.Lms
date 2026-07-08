@@ -35,6 +35,7 @@ public class LessonProgress {
     @Column(nullable = false)
     private Status status;
 
+    @Builder.Default
     @Column(name = "last_position_seconds")
     private Integer lastPositionSeconds = 0;
 
