@@ -80,6 +80,103 @@ export default function MainLayout() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
+
+      <footer className="bg-slate-900 text-slate-300 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="md:col-span-2">
+              <Link to="/" className="flex items-center space-x-2">
+                <BookOpen className="h-6 w-6 text-indigo-400" />
+                <span className="font-bold text-xl text-white">
+                  LMS Platform
+                </span>
+              </Link>
+              <p className="mt-3 text-sm text-slate-400 max-w-sm">
+                Learn anywhere, anytime. Online courses built and taught by
+                experienced instructors to help you advance your career.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
+                Explore
+              </h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link to="/" className="hover:text-white transition-colors">
+                    Course Catalog
+                  </Link>
+                </li>
+                {isAuthenticated() && (
+                  <li>
+                    <Link
+                      to="/dashboard"
+                      className="hover:text-white transition-colors"
+                    >
+                      My Learning
+                    </Link>
+                  </li>
+                )}
+                {user?.role === "INSTRUCTOR" && (
+                  <li>
+                    <Link
+                      to="/instructor"
+                      className="hover:text-white transition-colors"
+                    >
+                      Instructor Area
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
+                Account
+              </h4>
+              <ul className="space-y-2 text-sm">
+                {isAuthenticated() ? (
+                  <li>
+                    <Link
+                      to="/profile"
+                      className="hover:text-white transition-colors"
+                    >
+                      My Profile
+                    </Link>
+                  </li>
+                ) : (
+                  <>
+                    <li>
+                      <Link
+                        to="/login"
+                        className="hover:text-white transition-colors"
+                      >
+                        Login
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to="/register"
+                        className="hover:text-white transition-colors"
+                      >
+                        Create Account
+                      </Link>
+                    </li>
+                  </>
+                )}
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-slate-500">
+            <p>
+              © {new Date().getFullYear()} LMS Platform — HCMUTE Web
+              Development Project.
+            </p>
+            <p>Built with Spring Boot & React.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
