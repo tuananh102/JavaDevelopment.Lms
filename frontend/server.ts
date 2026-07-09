@@ -301,6 +301,12 @@ async function startServer() {
     if (MOCK_ENROLLMENTS.find((e) => e.course.id === courseId)) {
       return res.status(409).json({ message: "User is already enrolled in this course" });
     }
+    // Paid courses must go through the payment flow (mirrors the backend gate).
+    if (Number(course.price ?? 0) > 0) {
+      return res.status(409).json({
+        message: "This course requires payment. Please complete checkout to enroll.",
+      });
+    }
     const enrollment = {
       id: "e" + Date.now(),
       // Use the ACTUAL course being enrolled in (not always MOCK_COURSE), and the
@@ -321,6 +327,73 @@ async function startServer() {
   app.get("/api/v1/enrollments/courses/:courseId/check", (req, res) => {
     const enrolled = !!MOCK_ENROLLMENTS.find(e => e.course.id === req.params.courseId);
     res.json({ enrolled });
+  });
+
+  // --- Simulated payments ---
+  const MOCK_PAYMENTS: any[] = [];
+  const orderDto = (p: any) => ({
+    id: p.id,
+    courseId: p.course.id,
+    courseTitle: p.course.title,
+    courseSlug: p.course.slug,
+    amount: p.amount,
+    status: p.status,
+    createdAt: p.createdAt,
+    paidAt: p.paidAt ?? null,
+  });
+
+  app.post("/api/v1/payments/courses/:courseId", (req, res) => {
+    const course = MOCK_COURSES.find((c) => c.id === req.params.courseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (Number(course.price ?? 0) <= 0) {
+      return res.status(409).json({ message: "This course is free — enroll directly, no payment needed" });
+    }
+    if (MOCK_ENROLLMENTS.find((e) => e.course.id === course.id)) {
+      return res.status(409).json({ message: "You are already enrolled in this course" });
+    }
+    let order = MOCK_PAYMENTS.find((p) => p.course.id === course.id && p.status === "PENDING");
+    if (!order) {
+      order = {
+        id: nextId("pay"),
+        course,
+        amount: course.price,
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+        paidAt: null,
+      };
+      MOCK_PAYMENTS.push(order);
+    }
+    res.status(201).json(orderDto(order));
+  });
+
+  app.get("/api/v1/payments/:orderId", (req, res) => {
+    const order = MOCK_PAYMENTS.find((p) => p.id === req.params.orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    res.json(orderDto(order));
+  });
+
+  app.get("/api/v1/payments", (_req, res) => {
+    res.json(MOCK_PAYMENTS.map(orderDto));
+  });
+
+  app.post("/api/v1/payments/:orderId/confirm", (req, res) => {
+    const order = MOCK_PAYMENTS.find((p) => p.id === req.params.orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (order.status !== "PENDING") {
+      return res.status(409).json({ message: "This order can no longer be paid" });
+    }
+    order.status = "PAID";
+    order.paidAt = new Date().toISOString();
+    if (!MOCK_ENROLLMENTS.find((e) => e.course.id === order.course.id)) {
+      MOCK_ENROLLMENTS.push({
+        id: "e" + Date.now(),
+        course: order.course,
+        enrolledAt: new Date().toISOString(),
+        completedLessonsCount: 0,
+        completed: false,
+      });
+    }
+    res.json(orderDto(order));
   });
 
   app.post("/api/v1/progress/courses/:courseId/lessons/:lessonId/complete", (req, res) => {

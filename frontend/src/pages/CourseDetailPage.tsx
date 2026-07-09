@@ -52,6 +52,8 @@ export default function CourseDetailPage() {
       ),
   });
 
+  const isPaid = Number(course?.price ?? 0) > 0;
+
   const handleEnroll = () => {
     if (!isAuthenticated) {
       navigate("/login");
@@ -60,6 +62,11 @@ export default function CourseDetailPage() {
     if (enrollmentInfo?.enrolled) {
       if (firstLessonId)
         navigate(`/learn/${course.slug}/lesson/${firstLessonId}`);
+      return;
+    }
+    if (isPaid) {
+      // Paid course -> go through the (simulated) checkout instead of enrolling directly.
+      navigate(`/checkout/${course.id}`);
     } else {
       enrollMutation.mutate();
     }
@@ -155,7 +162,11 @@ export default function CourseDetailPage() {
               disabled={enrollMutation.isPending}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex justify-center items-center"
             >
-              {enrollmentInfo?.enrolled ? "Continue Learning" : "Enroll Now"}
+              {enrollmentInfo?.enrolled
+                ? "Continue Learning"
+                : isPaid
+                  ? `Buy for $${course.price}`
+                  : "Enroll for Free"}
             </button>
             <p className="text-center text-xs text-slate-500 mt-4">
               Full lifetime access. 30-day money-back guarantee.

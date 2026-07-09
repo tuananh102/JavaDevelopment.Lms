@@ -23,20 +23,50 @@ public class EnrollmentService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Direct (free) enrollment. Paid courses are rejected here — they must go through
+     * the payment flow ({@link com.lms.payment.PaymentService}) so the price can't be
+     * bypassed by calling the enroll endpoint directly.
+     */
     @Transactional
     public EnrollmentDto enrollInCourse(UUID userId, UUID courseId) {
-        if (enrollmentRepository.existsByUserIdAndCourseId(userId, courseId)) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
+
+        if (isPaid(course)) {
+            throw new ConflictException(
+                    "This course requires payment. Please complete checkout to enroll.");
+        }
+        return createEnrollment(userId, course);
+    }
+
+    /**
+     * Trusted enrollment path used by PaymentService after a successful (simulated)
+     * payment. Skips the paid-course guard because payment has already been recorded.
+     */
+    @Transactional
+    public EnrollmentDto enrollAfterPayment(UUID userId, UUID courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
+        return createEnrollment(userId, course);
+    }
+
+    /** True when the course has a positive price. */
+    public static boolean isPaid(Course course) {
+        return course.getPrice() != null
+                && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0;
+    }
+
+    private EnrollmentDto createEnrollment(UUID userId, Course course) {
+        if (enrollmentRepository.existsByUserIdAndCourseId(userId, course.getId())) {
             throw new ConflictException("User is already enrolled in this course");
+        }
+        if (course.getStatus() != Course.Status.PUBLISHED) {
+            throw new IllegalArgumentException("Cannot enroll in an unpublished course");
         }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
-
-        if (course.getStatus() != Course.Status.PUBLISHED) {
-            throw new IllegalArgumentException("Cannot enroll in an unpublished course");
-        }
 
         Enrollment enrollment = Enrollment.builder()
                 .user(user)

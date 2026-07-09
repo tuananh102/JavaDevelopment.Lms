@@ -8,6 +8,7 @@ import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
+import CheckoutPage from "./pages/CheckoutPage";
 import InstructorDashboardPage from "./pages/instructor/InstructorDashboardPage";
 import CourseEditorPage from "./pages/instructor/CourseEditorPage";
 import AdminPage from "./pages/instructor/AdminPage";
@@ -30,6 +31,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/checkout/:courseId" element={<CheckoutPage />} />
         </Route>
 
         {/* Requires INSTRUCTOR (or ADMIN) */}
