@@ -20,7 +20,9 @@ spring:
     baseline-version: 0
 
 jwt:
-  # Production: đặt JWT_SECRET trên Azure (>= 32 bytes). Default chỉ dùng cho local dev.
+  # Secret được dùng làm khóa HS256 ở dạng chuỗi UTF-8 THÔ (không còn Base64-decode).
+  # PHẢI >= 32 ký tự (=> >= 256-bit); ngắn hơn sẽ lỗi ký JWT khi login.
+  # Production: đặt JWT_SECRET trên Azure >= 32 ký tự. Default chỉ dùng cho local dev.
   secret: ${JWT_SECRET:local-dev-only-secret-change-me-min-32-bytes}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 hour
   refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000} # 7 days

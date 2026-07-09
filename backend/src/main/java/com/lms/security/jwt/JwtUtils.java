@@ -1,7 +1,6 @@
 package com.lms.security.jwt;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +9,7 @@ import org.springframework.stereotype.Component;
 import com.lms.security.services.UserDetailsImpl;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Slf4j
@@ -34,7 +34,10 @@ public class JwtUtils {
     }
 
     private SecretKey key() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+        // Secret is used as raw UTF-8 bytes (NOT Base64-decoded): a >= 32-character
+        // secret => >= 256-bit key, which satisfies HS256's minimum. Base64-decoding
+        // a 32-char string silently yielded a 24-byte (192-bit) key and broke signing.
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String getUserNameFromJwtToken(String token) {
