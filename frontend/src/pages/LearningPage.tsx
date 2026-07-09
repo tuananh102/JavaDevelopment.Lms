@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { useParams, Link, Navigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import {
+  useParams,
+  Link,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router";
 import { useAuthStore } from "../store/authStore";
 import {
   ArrowLeft,
@@ -21,10 +27,95 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+// --- YouTube IFrame API integration -------------------------------------
+// A plain <iframe> embed never reports playback state, so the page can't
+// know when a video finishes. The official IFrame Player API does: we load
+// it once, let it create the player, and listen for the ENDED state.
+
+let ytApiPromise: Promise<any> | null = null;
+function loadYouTubeApi(): Promise<any> {
+  const w = window as any;
+  if (w.YT?.Player) return Promise.resolve(w.YT);
+  if (!ytApiPromise) {
+    ytApiPromise = new Promise((resolve) => {
+      const prev = w.onYouTubeIframeAPIReady;
+      w.onYouTubeIframeAPIReady = () => {
+        prev?.();
+        resolve(w.YT);
+      };
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(script);
+    });
+  }
+  return ytApiPromise;
+}
+
+function getYouTubeVideoId(url: string): string | null {
+  return url.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/)?.[1] ?? null;
+}
+
+function YouTubeLessonPlayer({
+  videoId,
+  autoplay,
+  onEnded,
+}: {
+  videoId: string;
+  autoplay: boolean;
+  onEnded: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Keep the latest callback without re-creating the player on each render.
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    // YT.Player replaces this node with an iframe, so give it a child that
+    // React doesn't manage.
+    const mount = document.createElement("div");
+    container.appendChild(mount);
+    let player: any;
+    let cancelled = false;
+
+    loadYouTubeApi().then((YT) => {
+      if (cancelled) return;
+      player = new YT.Player(mount, {
+        videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: { autoplay: autoplay ? 1 : 0, rel: 0 },
+        events: {
+          onStateChange: (e: any) => {
+            if (e.data === YT.PlayerState.ENDED) onEndedRef.current();
+          },
+        },
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      try {
+        player?.destroy();
+      } catch {
+        // ignore — player may not have finished initializing
+      }
+      while (container.firstChild) container.removeChild(container.firstChild);
+    };
+    // autoplay is intentionally read only on mount for a given video
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId]);
+
+  return <div ref={containerRef} className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full" />;
+}
+
 export default function LearningPage() {
   const { slug, lessonId } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
   const role = useAuthStore((s) => s.user?.role);
 
   const { data: course, isLoading: loadingCourse } = useQuery({
@@ -133,6 +224,20 @@ export default function LearningPage() {
       ? allLessons[currentLessonIndex + 1]
       : null;
 
+  // When the video finishes: mark the lesson done and move on to the next
+  // one. Instructors/admins previewing without an enrollment skip the
+  // complete call (the backend would reject it) but still advance.
+  const handleVideoEnded = () => {
+    if (!isCompleted && !canPreviewWithoutEnrollment) {
+      completeMutation.mutate(currentLesson.id);
+    }
+    if (nextLesson) {
+      navigate(`/learn/${slug}/lesson/${nextLesson.id}`, {
+        state: { autoplay: true },
+      });
+    }
+  };
+
   return (
     <div className="h-screen w-full flex flex-col bg-white overflow-hidden">
       {/* Header */}
@@ -183,7 +288,14 @@ export default function LearningPage() {
         <main className="flex-1 flex flex-col relative overflow-y-auto bg-slate-50">
           {currentLesson.type === "VIDEO" && (
             <div className="w-full aspect-video bg-black flex items-center justify-center shrink-0">
-              {currentLesson.contentUrl ? (
+              {currentLesson.contentUrl &&
+              getYouTubeVideoId(currentLesson.contentUrl) ? (
+                <YouTubeLessonPlayer
+                  videoId={getYouTubeVideoId(currentLesson.contentUrl)!}
+                  autoplay={Boolean(location.state?.autoplay)}
+                  onEnded={handleVideoEnded}
+                />
+              ) : currentLesson.contentUrl ? (
                 <iframe
                   src={currentLesson.contentUrl}
                   title={currentLesson.title}
