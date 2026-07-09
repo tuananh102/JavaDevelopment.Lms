@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { BookOpen, Award, CheckCircle2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 // Khớp EnrollmentDto: { id, course: CourseDto, enrolledAt, completedLessonsCount, completed }
 interface Enrollment {
@@ -21,6 +22,7 @@ const FALLBACK_THUMB =
   "https://placehold.co/600x400/e2e8f0/64748b?text=Course";
 
 export default function DashboardPage() {
+  usePageTitle("My Learning");
   const { data: enrollments = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["enrollments"],
     queryFn: async () => {

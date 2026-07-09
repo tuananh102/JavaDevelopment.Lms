@@ -3,8 +3,10 @@ import { useNavigate, Link } from "react-router";
 import { useAuthStore } from "../store/authStore";
 import api from "../lib/api";
 import { BookOpen } from "lucide-react";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function LoginPage() {
+  usePageTitle("Login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

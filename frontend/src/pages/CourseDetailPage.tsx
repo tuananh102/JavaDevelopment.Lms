@@ -3,6 +3,7 @@ import { PlayCircle, Clock, Lock } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useAuthStore } from "../store/authStore";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function CourseDetailPage() {
   const { slug } = useParams();
@@ -17,6 +18,7 @@ export default function CourseDetailPage() {
       return res.data;
     },
   });
+  usePageTitle(course?.title);
 
   const { data: enrollmentInfo } = useQuery({
     queryKey: ["enrollment", course?.id],

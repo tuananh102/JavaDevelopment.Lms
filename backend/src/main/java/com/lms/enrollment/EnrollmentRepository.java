@@ -12,4 +12,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
     Optional<Enrollment> findByUserIdAndCourseId(UUID userId, UUID courseId);
     List<Enrollment> findByUserIdOrderByEnrolledAtDesc(UUID userId);
     boolean existsByUserIdAndCourseId(UUID userId, UUID courseId);
+
+    // Mọi enrollment vào các khoá của một instructor — cho trang analytics.
+    List<Enrollment> findByCourseInstructorId(UUID instructorId);
 }

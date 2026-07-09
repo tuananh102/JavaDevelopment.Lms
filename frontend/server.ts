@@ -65,7 +65,7 @@ const MOCK_PROGRESS: any[] = [];
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT ?? 3000);
 
   app.use(express.json());
 
@@ -183,6 +183,18 @@ async function startServer() {
     res.json(user);
   });
 
+  // Admin promotes/demotes a user (e.g. STUDENT -> INSTRUCTOR).
+  app.patch("/api/v1/users/:id/role", (req, res) => {
+    const user = MOCK_USERS.find((u) => u.id === req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const role = String(req.query.role ?? "");
+    if (!["STUDENT", "INSTRUCTOR", "ADMIN"].includes(role)) {
+      return res.status(400).json({ message: "Invalid value for parameter 'role'" });
+    }
+    user.role = role;
+    res.json(user);
+  });
+
   const mkSlug = (s: string) =>
     s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-+)|(-+$)/g, "");
 
@@ -221,12 +233,14 @@ async function startServer() {
   app.get("/api/v1/courses", (req, res) => {
     const q = String(req.query.q ?? "").trim().toLowerCase();
     const categoryId = req.query.categoryId ? String(req.query.categoryId) : null;
+    const level = req.query.level ? String(req.query.level) : null;
     const page = Math.max(parseInt(String(req.query.page ?? "0"), 10) || 0, 0);
     const size = Math.min(Math.max(parseInt(String(req.query.size ?? "10"), 10) || 10, 1), 100);
     const [sortField, sortDir] = String(req.query.sort ?? "createdAt,desc").split(",");
 
     let list = MOCK_COURSES.filter((c) => c.status === "PUBLISHED");
     if (categoryId) list = list.filter((c) => c.categoryId === categoryId);
+    if (level) list = list.filter((c) => c.level === level);
     if (q)
       list = list.filter(
         (c) =>
@@ -459,6 +473,49 @@ async function startServer() {
       });
     }
     res.json(orderDto(order));
+  });
+
+  // --- Instructor analytics (mirrors GET /api/v1/instructor/stats) ---
+  // The mock treats every course as owned by the logged-in instructor. A seeded
+  // baseline keeps the dashboard populated before any interaction; enrollments
+  // and payments made during the session are added on top.
+  app.get("/api/v1/instructor/stats", (_req, res) => {
+    const paid = MOCK_PAYMENTS.filter((p) => p.status === "PAID");
+    const courses = MOCK_COURSES.map((c, i) => {
+      const seedStudents = c.status === "PUBLISHED" ? 34 + i * 13 : 0;
+      const students =
+        seedStudents + MOCK_ENROLLMENTS.filter((e) => e.course.id === c.id).length;
+      const revenue =
+        Math.round(
+          (seedStudents * Number(c.price ?? 0) +
+            paid
+              .filter((p) => p.course.id === c.id)
+              .reduce((sum, p) => sum + Number(p.amount), 0)) * 100,
+        ) / 100;
+      return { id: c.id, title: c.title, status: c.status, students, revenue };
+    });
+
+    const ENROLL_SEED = [5, 9, 7, 12, 15, 11];
+    const now = new Date();
+    const monthly = ENROLL_SEED.map((enrollments, k) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (ENROLL_SEED.length - 1 - k), 1);
+      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return {
+        month,
+        enrollments,
+        revenue: Math.round(enrollments * 49.99 * 100) / 100,
+      };
+    });
+
+    res.json({
+      totalCourses: courses.length,
+      publishedCourses: courses.filter((c) => c.status === "PUBLISHED").length,
+      totalStudents: courses.reduce((sum, c) => sum + c.students, 0),
+      totalRevenue:
+        Math.round(courses.reduce((sum, c) => sum + c.revenue, 0) * 100) / 100,
+      courses,
+      monthly,
+    });
   });
 
   app.post("/api/v1/progress/courses/:courseId/lessons/:lessonId/complete", (req, res) => {

@@ -34,6 +34,7 @@ public class CourseController {
     @GetMapping
     public ResponseEntity<Page<CourseDto>> getPublishedCourses(
             @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) Course.Level level,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -49,7 +50,7 @@ public class CourseController {
         int safePage = Math.max(page, 0);
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(direction, property));
 
-        return ResponseEntity.ok(courseService.getPublishedCourses(categoryId, q, pageable));
+        return ResponseEntity.ok(courseService.getPublishedCourses(categoryId, level, q, pageable));
     }
 
     // Khoá của instructor đang đăng nhập (mọi trạng thái). Đặt TRƯỚC /{slug} nhưng

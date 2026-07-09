@@ -9,6 +9,9 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import CheckoutPage from "./pages/CheckoutPage";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import TermsPage from "./pages/TermsPage";
 import InstructorDashboardPage from "./pages/instructor/InstructorDashboardPage";
 import CourseEditorPage from "./pages/instructor/CourseEditorPage";
 import AdminPage from "./pages/instructor/AdminPage";
@@ -26,6 +29,9 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<CatalogPage />} />
         <Route path="/courses/:slug" element={<CourseDetailPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/terms" element={<TermsPage />} />
 
         {/* Requires login */}
         <Route element={<ProtectedRoute />}>

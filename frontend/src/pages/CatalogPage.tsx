@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { BookOpen, Loader2, AlertCircle, Search } from "lucide-react";
 import api from "../lib/api";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const PAGE_SIZE = 12;
 
@@ -45,15 +46,25 @@ const LEVEL_LABEL: Record<Course["level"], string> = {
   ALL_LEVELS: "All levels",
 };
 
+// Thứ tự chip filter level trên catalog (null = không lọc).
+const LEVEL_OPTIONS = Object.keys(LEVEL_LABEL) as Course["level"][];
+
+const chipCls = (active: boolean) =>
+  active
+    ? "px-4 py-1.5 rounded-full text-sm font-medium bg-primary-600 text-white"
+    : "px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50";
+
 const FALLBACK_THUMB =
   "https://placehold.co/600x400/e2e8f0/64748b?text=Course";
 
 export default function CatalogPage() {
+  usePageTitle("Explore Courses");
   const [search, setSearch] = useState("");
   // Debounced copy of `search` — the query only refetches when the user pauses
   // typing, instead of on every keystroke.
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [level, setLevel] = useState<Course["level"] | null>(null);
   const [sort, setSort] = useState<string>(SORT_OPTIONS[0].value);
 
   useEffect(() => {
@@ -78,7 +89,7 @@ export default function CatalogPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["courses", { q: debouncedSearch, categoryId, sort }],
+    queryKey: ["courses", { q: debouncedSearch, categoryId, level, sort }],
     queryFn: async ({ pageParam }) => {
       const res = await api.get<Page<Course>>("/courses", {
         params: {
@@ -87,6 +98,7 @@ export default function CatalogPage() {
           sort,
           q: debouncedSearch || undefined,
           categoryId: categoryId ?? undefined,
+          level: level ?? undefined,
         },
       });
       return res.data;
@@ -135,41 +147,59 @@ export default function CatalogPage() {
         </div>
       </div>
 
-      {/* Category filter */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setCategoryId(null)}
-          className={
-            categoryId === null
-              ? "px-4 py-1.5 rounded-full text-sm font-medium bg-primary-600 text-white"
-              : "px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
-          }
-        >
-          All
-        </button>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() =>
-              setCategoryId(categoryId === cat.id ? null : cat.id)
-            }
-            className={
-              categoryId === cat.id
-                ? "px-4 py-1.5 rounded-full text-sm font-medium bg-primary-600 text-white"
-                : "px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
-            }
-          >
-            {cat.name}
-          </button>
-        ))}
-        {!isLoading && !isError && (
-          <span className="ml-auto text-sm text-slate-500 flex items-center">
-            {isFetching && !isFetchingNextPage && (
-              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-            )}
-            {totalResults} course{totalResults === 1 ? "" : "s"}
+      {/* Filters: one row per dimension */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-20 shrink-0 text-sm font-medium text-slate-500">
+            Category
           </span>
-        )}
+          <button
+            onClick={() => setCategoryId(null)}
+            className={chipCls(categoryId === null)}
+          >
+            All
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() =>
+                setCategoryId(categoryId === cat.id ? null : cat.id)
+              }
+              className={chipCls(categoryId === cat.id)}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-20 shrink-0 text-sm font-medium text-slate-500">
+            Level
+          </span>
+          <button
+            onClick={() => setLevel(null)}
+            className={chipCls(level === null)}
+          >
+            All
+          </button>
+          {LEVEL_OPTIONS.map((lvl) => (
+            <button
+              key={lvl}
+              onClick={() => setLevel(level === lvl ? null : lvl)}
+              className={chipCls(level === lvl)}
+            >
+              {LEVEL_LABEL[lvl]}
+            </button>
+          ))}
+          {!isLoading && !isError && (
+            <span className="ml-auto text-sm text-slate-500 flex items-center">
+              {isFetching && !isFetchingNextPage && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              )}
+              {totalResults} course{totalResults === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
       </div>
 
       {isLoading && (

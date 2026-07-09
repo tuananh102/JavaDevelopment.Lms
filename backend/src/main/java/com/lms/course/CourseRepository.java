@@ -24,8 +24,10 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
     // built in the service so the query stays a simple parameter comparison.
     @Query("SELECT c FROM Course c WHERE c.status = 'PUBLISHED' " +
             "AND (:categoryId IS NULL OR c.categoryId = :categoryId) " +
+            "AND (:level IS NULL OR c.level = :level) " +
             "AND (:q IS NULL OR LOWER(c.title) LIKE :q OR LOWER(c.description) LIKE :q)")
     Page<Course> findPublishedCourses(@Param("categoryId") UUID categoryId,
+                                      @Param("level") Course.Level level,
                                       @Param("q") String q,
                                       Pageable pageable);
 }

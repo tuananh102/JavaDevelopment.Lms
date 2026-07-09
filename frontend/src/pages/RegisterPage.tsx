@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import api from "../lib/api";
 import { BookOpen } from "lucide-react";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function RegisterPage() {
+  usePageTitle("Create Account");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

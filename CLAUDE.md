@@ -44,7 +44,7 @@ Seed accounts (from `V2__seed_data.sql`), password is `password` for all: `admin
 ## Frontend architecture
 
 - **Entry** `src/main.tsx`: wraps `App` in `QueryClientProvider` (TanStack Query) + **`HashRouter`** (React Router v8). HashRouter is deliberate — it makes the SPA work on GitHub Pages without server rewrites. Keep it.
-- **Routing** in `src/App.tsx`: public `/login` `/register`; `MainLayout`-wrapped `/`, `/courses/:slug`, `/dashboard`, `/instructor`, `/instructor/course/:id`; standalone `/learn/:courseId/lesson/:lessonId`.
+- **Routing** in `src/App.tsx`: public `/login` `/register`; `MainLayout`-wrapped `/`, `/courses/:slug`, `/about`, `/contact`, `/terms`, `/dashboard`, `/instructor`, `/instructor/course/:id`; standalone `/learn/:courseId/lesson/:lessonId`. Pages set the browser-tab title via `usePageTitle` (`src/hooks/usePageTitle.ts`).
 - **API client** `src/lib/api.ts`: single axios instance, `baseURL: "/api/v1"`. Request interceptor attaches the JWT from `localStorage`; response interceptor logs out and redirects to `/login` on 401. Use this instance for all API calls.
 - **Auth state** `src/store/authStore.ts`: Zustand store; the token lives in `localStorage` (interceptor reads it there directly).
 - **Server state** should go through TanStack Query; **client/UI state** through Zustand.
@@ -73,7 +73,9 @@ Recurring component recipes (copy these, don't invent variants):
 Base path `/api/v1`. Frontend field names are **camelCase**; the mock server in `frontend/server.ts` mirrors the real backend DTOs — keep the two in sync when changing shapes.
 
 - `auth`: `POST /auth/login`, `POST /auth/register`
-- `courses`: `GET /courses` (paged: `?page&size&sort=field,dir&categoryId`), `GET /courses/{slug}`, `POST /courses` (instructor/admin), `PATCH /courses/{id}/status`
+- `courses`: `GET /courses` (paged: `?page&size&sort=field,dir&categoryId&level&q`), `GET /courses/{slug}`, `POST /courses` (instructor/admin), `PATCH /courses/{id}/status`
+- `instructor`: `GET /instructor/stats` (instructor/admin) — KPI totals + per-course students/revenue + last-6-months series for the dashboard charts
+- `users` (admin): `PATCH /users/{id}/status?active=`, `PATCH /users/{id}/role?role=` — the role endpoint is the only path to INSTRUCTOR (self-registration is always STUDENT)
 - `enrollments`: `POST /enrollments/courses/{courseId}`, `GET /enrollments`, `GET /enrollments/courses/{courseId}/check`
 - `progress`: `POST /progress/courses/{courseId}/lessons/{lessonId}/complete`, `PUT /.../position`, `GET /progress/courses/{courseId}/completed`
 

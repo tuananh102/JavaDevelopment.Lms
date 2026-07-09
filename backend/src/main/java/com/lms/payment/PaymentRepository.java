@@ -11,4 +11,7 @@ import java.util.UUID;
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     Optional<Payment> findByUserIdAndCourseIdAndStatus(UUID userId, UUID courseId, Payment.Status status);
     List<Payment> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    // Mọi payment cho các khoá của một instructor (lọc PAID để tính doanh thu).
+    List<Payment> findByCourseInstructorIdAndStatus(UUID instructorId, Payment.Status status);
 }

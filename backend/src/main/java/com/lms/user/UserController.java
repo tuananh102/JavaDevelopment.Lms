@@ -91,6 +91,26 @@ public class UserController {
         return ResponseEntity.ok(UserDto.from(userRepository.save(user)));
     }
 
+    /**
+     * Change a user's role (e.g. promote a STUDENT to INSTRUCTOR). This is the only
+     * way to become an instructor — public registration always creates a STUDENT.
+     */
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDto> setRole(
+            @PathVariable UUID id,
+            @RequestParam User.Role role,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        if (id.equals(userDetails.getId())) {
+            // Guard against an admin demoting themselves and losing admin access.
+            throw new ConflictException("You cannot change your own role");
+        }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setRole(role);
+        return ResponseEntity.ok(UserDto.from(userRepository.save(user)));
+    }
+
     private User loadCurrent(UserDetailsImpl userDetails) {
         return userRepository.findById(userDetails.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));

@@ -29,7 +29,7 @@ public class CourseService {
     private final EnrollmentRepository enrollmentRepository;
 
     @Transactional(readOnly = true)
-    public Page<CourseDto> getPublishedCourses(UUID categoryId, String q, Pageable pageable) {
+    public Page<CourseDto> getPublishedCourses(UUID categoryId, Course.Level level, String q, Pageable pageable) {
         // Escape LIKE wildcards in the user's keyword so "50%" searches literally,
         // then wrap it into a case-insensitive contains pattern.
         String pattern = (q == null || q.isBlank())
@@ -38,7 +38,7 @@ public class CourseService {
                         .replace("\\", "\\\\")
                         .replace("%", "\\%")
                         .replace("_", "\\_") + "%";
-        return courseRepository.findPublishedCourses(categoryId, pattern, pageable)
+        return courseRepository.findPublishedCourses(categoryId, level, pattern, pageable)
                 .map(this::mapToDto);
     }
 

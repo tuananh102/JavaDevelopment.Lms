@@ -218,6 +218,17 @@ function UsersSection() {
       alert(err?.response?.data?.message ?? "Failed to update user."),
   });
 
+  // Đây là con đường duy nhất để một STUDENT trở thành INSTRUCTOR — đăng ký
+  // công khai luôn tạo STUDENT (ép ở server), admin nâng quyền tại đây.
+  const roleMutation = useMutation({
+    mutationFn: async ({ id, role }: { id: string; role: string }) =>
+      api.patch(`/users/${id}/role`, null, { params: { role } }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+    onError: (err: any) =>
+      alert(err?.response?.data?.message ?? "Failed to change role."),
+  });
+
   return (
     <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
@@ -261,28 +272,50 @@ function UsersSection() {
                 <p className="text-sm text-slate-500 truncate">{u.email}</p>
               </div>
               {u.id !== currentUserId && (
-                <button
-                  onClick={() =>
-                    statusMutation.mutate({ id: u.id, active: !u.active })
-                  }
-                  disabled={statusMutation.isPending}
-                  className={
-                    "flex items-center px-3 py-1.5 text-sm rounded-lg transition-colors shrink-0 " +
-                    (u.active
-                      ? "text-danger-700 hover:bg-danger-50"
-                      : "text-success-700 hover:bg-success-50")
-                  }
-                >
-                  {u.active ? (
-                    <>
-                      <UserX className="w-4 h-4 mr-1" /> Deactivate
-                    </>
-                  ) : (
-                    <>
-                      <UserCheck className="w-4 h-4 mr-1" /> Activate
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    value={u.role}
+                    onChange={(e) => {
+                      const role = e.target.value;
+                      if (
+                        window.confirm(
+                          `Change ${u.fullName}'s role to ${role}?`,
+                        )
+                      ) {
+                        roleMutation.mutate({ id: u.id, role });
+                      }
+                    }}
+                    disabled={roleMutation.isPending}
+                    className="px-2 py-1.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
+                    title="Change role"
+                  >
+                    <option value="STUDENT">Student</option>
+                    <option value="INSTRUCTOR">Instructor</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                  <button
+                    onClick={() =>
+                      statusMutation.mutate({ id: u.id, active: !u.active })
+                    }
+                    disabled={statusMutation.isPending}
+                    className={
+                      "flex items-center px-3 py-1.5 text-sm rounded-lg transition-colors " +
+                      (u.active
+                        ? "text-danger-700 hover:bg-danger-50"
+                        : "text-success-700 hover:bg-success-50")
+                    }
+                  >
+                    {u.active ? (
+                      <>
+                        <UserX className="w-4 h-4 mr-1" /> Deactivate
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="w-4 h-4 mr-1" /> Activate
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           ))}
