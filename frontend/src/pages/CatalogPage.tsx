@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { BookOpen, Loader2, AlertCircle } from "lucide-react";
 import api from "../lib/api";
+
+const PAGE_SIZE = 12;
 
 // Khớp với CourseDto ở backend (GET /api/v1/courses trả Page<CourseDto>)
 interface Course {
@@ -36,17 +38,30 @@ const FALLBACK_THUMB =
 export default function CatalogPage() {
   const [search, setSearch] = useState("");
 
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["courses"],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       const res = await api.get<Page<Course>>("/courses", {
-        params: { size: 50, sort: "createdAt,desc" },
+        params: { page: pageParam, size: PAGE_SIZE, sort: "createdAt,desc" },
       });
       return res.data;
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const next = allPages.length;
+      return next < lastPage.totalPages ? next : undefined;
+    },
   });
 
-  const courses = (data?.content ?? []).filter((c) => {
+  const allCourses = data?.pages.flatMap((p) => p.content) ?? [];
+  const courses = allCourses.filter((c) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -132,6 +147,24 @@ export default function CatalogPage() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {!isLoading && !isError && hasNextPage && !search.trim() && (
+        <div className="flex justify-center pt-4">
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="flex items-center px-6 py-2.5 bg-white border border-slate-300 rounded-lg font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading...
+              </>
+            ) : (
+              "Load more"
+            )}
+          </button>
         </div>
       )}
     </div>

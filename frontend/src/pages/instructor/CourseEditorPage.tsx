@@ -12,12 +12,44 @@ interface Category {
   slug: string;
 }
 
+interface LessonDraft {
+  title: string;
+  type: string;
+  contentUrl: string;
+  contentText: string;
+  durationMinutes: number;
+}
+
+const emptyLessonDraft = (): LessonDraft => ({
+  title: "",
+  type: "VIDEO",
+  contentUrl: "",
+  contentText: "",
+  durationMinutes: 0,
+});
+
 function slugify(s: string) {
   return s
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Build the request body for create/update lesson. Content is scoped to the type
+ * (a VIDEO carries a URL, an ARTICLE carries text) and duration is stored in seconds.
+ */
+function lessonPayload(draft: LessonDraft, orderIndex?: number) {
+  return {
+    title: draft.title,
+    type: draft.type,
+    contentUrl: draft.type === "VIDEO" ? draft.contentUrl.trim() || null : null,
+    contentText:
+      draft.type === "ARTICLE" ? draft.contentText.trim() || null : null,
+    durationSeconds: Math.max(0, Math.round((draft.durationMinutes || 0) * 60)),
+    ...(orderIndex != null ? { orderIndex } : {}),
+  };
 }
 
 export default function CourseEditorPage() {
@@ -37,20 +69,16 @@ export default function CourseEditorPage() {
 
   // Curriculum add-forms
   const [newSection, setNewSection] = useState("");
-  const [newLesson, setNewLesson] = useState<
-    Record<string, { title: string; type: string }>
-  >({});
+  const [newLesson, setNewLesson] = useState<Record<string, LessonDraft>>({});
 
   // Inline edit state
   const [editingSection, setEditingSection] = useState<{
     id: string;
     title: string;
   } | null>(null);
-  const [editingLesson, setEditingLesson] = useState<{
-    id: string;
-    title: string;
-    type: string;
-  } | null>(null);
+  const [editingLesson, setEditingLesson] = useState<
+    (LessonDraft & { id: string }) | null
+  >(null);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -151,47 +179,39 @@ export default function CourseEditorPage() {
   const addLessonMutation = useMutation({
     mutationFn: async ({
       sectionId,
-      title: lessonTitle,
-      type,
+      draft,
       order,
     }: {
       sectionId: string;
-      title: string;
-      type: string;
+      draft: LessonDraft;
       order: number;
     }) => {
-      await api.post(`/courses/sections/${sectionId}/lessons`, {
-        title: lessonTitle,
-        type,
-        durationSeconds: 0,
-        orderIndex: order,
-      });
+      await api.post(
+        `/courses/sections/${sectionId}/lessons`,
+        lessonPayload(draft, order),
+      );
     },
     onSuccess: (_data, vars) => {
-      setNewLesson((prev) => ({
-        ...prev,
-        [vars.sectionId]: { title: "", type: "VIDEO" },
-      }));
+      setNewLesson((prev) => ({ ...prev, [vars.sectionId]: emptyLessonDraft() }));
       invalidateCourse();
     },
+    onError: (err: any) =>
+      alert(err?.response?.data?.message ?? "Failed to add lesson."),
   });
 
   const updateLessonMutation = useMutation({
-    mutationFn: async ({
-      lessonId,
-      title,
-      type,
-    }: {
-      lessonId: string;
-      title: string;
-      type: string;
-    }) => {
-      await api.put(`/courses/lessons/${lessonId}`, { title, type });
+    // IMPORTANT: send the FULL lesson payload. The backend overwrites contentUrl/
+    // contentText unconditionally, so omitting them (as the old code did) wiped a
+    // lesson's video/article every time its title or type was edited.
+    mutationFn: async (lesson: LessonDraft & { id: string }) => {
+      await api.put(`/courses/lessons/${lesson.id}`, lessonPayload(lesson));
     },
     onSuccess: () => {
       setEditingLesson(null);
       invalidateCourse();
     },
+    onError: (err: any) =>
+      alert(err?.response?.data?.message ?? "Failed to update lesson."),
   });
 
   const deleteLessonMutation = useMutation({
@@ -348,10 +368,7 @@ export default function CourseEditorPage() {
             ) : (
               <div className="space-y-4">
                 {(course?.sections ?? []).map((section: any) => {
-                  const draft = newLesson[section.id] ?? {
-                    title: "",
-                    type: "VIDEO",
-                  };
+                  const draft = newLesson[section.id] ?? emptyLessonDraft();
                   const isEditingThisSection =
                     editingSection?.id === section.id;
                   return (
@@ -446,59 +463,59 @@ export default function CourseEditorPage() {
                                 className="flex items-center justify-between bg-white border border-slate-200 p-3 rounded-md gap-2"
                               >
                                 {isEditingThisLesson ? (
-                                  <>
-                                    <input
-                                      type="text"
-                                      value={editingLesson.title}
+                                  <div className="w-full space-y-3">
+                                    <LessonFields
+                                      draft={editingLesson}
                                       autoFocus
-                                      onChange={(e) =>
+                                      onChange={(d) =>
                                         setEditingLesson({
-                                          ...editingLesson,
-                                          title: e.target.value,
+                                          ...d,
+                                          id: editingLesson.id,
                                         })
                                       }
-                                      className={`${inputCls} flex-1`}
                                     />
-                                    <select
-                                      value={editingLesson.type}
-                                      onChange={(e) =>
-                                        setEditingLesson({
-                                          ...editingLesson,
-                                          type: e.target.value,
-                                        })
-                                      }
-                                      className={inputCls}
-                                    >
-                                      <option value="VIDEO">VIDEO</option>
-                                      <option value="ARTICLE">ARTICLE</option>
-                                    </select>
-                                    <button
-                                      onClick={() =>
-                                        editingLesson.title.trim() &&
-                                        updateLessonMutation.mutate({
-                                          lessonId: lesson.id,
-                                          title: editingLesson.title.trim(),
-                                          type: editingLesson.type,
-                                        })
-                                      }
-                                      disabled={updateLessonMutation.isPending}
-                                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-md shrink-0"
-                                      title="Save"
-                                    >
-                                      <Check className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingLesson(null)}
-                                      className="p-2 text-slate-500 hover:bg-slate-200 rounded-md shrink-0"
-                                      title="Cancel"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </>
+                                    <div className="flex justify-end gap-2">
+                                      <button
+                                        onClick={() => setEditingLesson(null)}
+                                        className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-md"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          editingLesson.title.trim() &&
+                                          updateLessonMutation.mutate({
+                                            ...editingLesson,
+                                            title: editingLesson.title.trim(),
+                                          })
+                                        }
+                                        disabled={
+                                          !editingLesson.title.trim() ||
+                                          updateLessonMutation.isPending
+                                        }
+                                        className="flex items-center px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                                      >
+                                        <Check className="w-4 h-4 mr-1" /> Save
+                                        lesson
+                                      </button>
+                                    </div>
+                                  </div>
                                 ) : (
                                   <>
-                                    <span className="text-sm text-slate-700">
+                                    <span className="text-sm text-slate-700 min-w-0 truncate">
                                       {idx + 1}. {lesson.title}
+                                      {lesson.type === "VIDEO" &&
+                                        !lesson.contentUrl && (
+                                          <span className="ml-2 text-xs text-amber-600">
+                                            (no video)
+                                          </span>
+                                        )}
+                                      {lesson.type === "ARTICLE" &&
+                                        !lesson.contentText && (
+                                          <span className="ml-2 text-xs text-amber-600">
+                                            (no content)
+                                          </span>
+                                        )}
                                     </span>
                                     <div className="flex items-center gap-1 shrink-0">
                                       <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded">
@@ -510,6 +527,14 @@ export default function CourseEditorPage() {
                                             id: lesson.id,
                                             title: lesson.title,
                                             type: lesson.type,
+                                            contentUrl: lesson.contentUrl ?? "",
+                                            contentText:
+                                              lesson.contentText ?? "",
+                                            durationMinutes: lesson.durationSeconds
+                                              ? Math.round(
+                                                  lesson.durationSeconds / 60,
+                                                )
+                                              : 0,
                                           })
                                         }
                                         className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md"
@@ -542,54 +567,37 @@ export default function CourseEditorPage() {
                           },
                         )}
                         {/* Add lesson */}
-                        <div className="flex items-center gap-2 pt-2">
-                          <input
-                            type="text"
-                            value={draft.title}
-                            onChange={(e) =>
+                        <div className="pt-3 border-t border-dashed border-slate-200 space-y-2">
+                          <p className="text-xs font-medium text-slate-500">
+                            Add a lesson
+                          </p>
+                          <LessonFields
+                            draft={draft}
+                            onChange={(d) =>
                               setNewLesson((prev) => ({
                                 ...prev,
-                                [section.id]: {
-                                  ...draft,
-                                  title: e.target.value,
-                                },
+                                [section.id]: d,
                               }))
                             }
-                            placeholder="New lesson title"
-                            className={`${inputCls} flex-1`}
                           />
-                          <select
-                            value={draft.type}
-                            onChange={(e) =>
-                              setNewLesson((prev) => ({
-                                ...prev,
-                                [section.id]: {
-                                  ...draft,
-                                  type: e.target.value,
-                                },
-                              }))
-                            }
-                            className={inputCls}
-                          >
-                            <option value="VIDEO">VIDEO</option>
-                            <option value="ARTICLE">ARTICLE</option>
-                          </select>
-                          <button
-                            onClick={() =>
-                              draft.title.trim() &&
-                              addLessonMutation.mutate({
-                                sectionId: section.id,
-                                title: draft.title.trim(),
-                                type: draft.type,
-                                order: (section.lessons?.length ?? 0) + 1,
-                              })
-                            }
-                            disabled={addLessonMutation.isPending}
-                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-md shrink-0"
-                            title="Add lesson"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() =>
+                                draft.title.trim() &&
+                                addLessonMutation.mutate({
+                                  sectionId: section.id,
+                                  draft: { ...draft, title: draft.title.trim() },
+                                  order: (section.lessons?.length ?? 0) + 1,
+                                })
+                              }
+                              disabled={
+                                !draft.title.trim() || addLessonMutation.isPending
+                              }
+                              className="flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-50"
+                            >
+                              <Plus className="w-4 h-4 mr-1" /> Add lesson
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -627,6 +635,72 @@ export default function CourseEditorPage() {
 
 const inputCls =
   "w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white";
+
+/**
+ * Editable fields for a lesson: title, type, duration, and the type-specific content
+ * (a video embed URL for VIDEO, article body for ARTICLE). Shared by the add-lesson
+ * and edit-lesson forms so both stay in sync.
+ */
+function LessonFields({
+  draft,
+  onChange,
+  autoFocus,
+}: {
+  draft: LessonDraft;
+  onChange: (d: LessonDraft) => void;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <input
+        type="text"
+        value={draft.title}
+        autoFocus={autoFocus}
+        onChange={(e) => onChange({ ...draft, title: e.target.value })}
+        placeholder="Lesson title"
+        className={inputCls}
+      />
+      <div className="flex gap-2">
+        <select
+          value={draft.type}
+          onChange={(e) => onChange({ ...draft, type: e.target.value })}
+          className={inputCls}
+        >
+          <option value="VIDEO">VIDEO</option>
+          <option value="ARTICLE">ARTICLE</option>
+        </select>
+        <input
+          type="number"
+          min={0}
+          value={draft.durationMinutes}
+          onChange={(e) =>
+            onChange({ ...draft, durationMinutes: Number(e.target.value) })
+          }
+          placeholder="Minutes"
+          title="Duration (minutes)"
+          className={inputCls}
+        />
+      </div>
+      {draft.type === "VIDEO" ? (
+        <input
+          type="text"
+          value={draft.contentUrl}
+          onChange={(e) => onChange({ ...draft, contentUrl: e.target.value })}
+          placeholder="Video embed URL (e.g. https://www.youtube.com/embed/…)"
+          className={inputCls}
+        />
+      ) : (
+        <textarea
+          value={draft.contentText}
+          onChange={(e) => onChange({ ...draft, contentText: e.target.value })}
+          placeholder="Article content"
+          rows={4}
+          className={inputCls}
+        />
+      )}
+    </div>
+  );
+}
 
 function Field({
   label,

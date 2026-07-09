@@ -1,12 +1,13 @@
-import { useParams, Link, useNavigate } from "react-router";
-import { PlayCircle, CheckCircle2, Clock, Lock } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useParams, useNavigate } from "react-router";
+import { PlayCircle, Clock, Lock } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 
 export default function CourseDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
 
   const { data: course, isLoading } = useQuery({
@@ -35,9 +36,20 @@ export default function CourseDetailPage() {
       return res.data;
     },
     onSuccess: () => {
-      if (firstLessonId)
+      // Refresh the enrollment check + dashboard list so the UI reflects the new state.
+      queryClient.invalidateQueries({ queryKey: ["enrollment", course.id] });
+      queryClient.invalidateQueries({ queryKey: ["enrollments"] });
+      if (firstLessonId) {
         navigate(`/learn/${course.slug}/lesson/${firstLessonId}`);
+      } else {
+        alert("You're enrolled! This course doesn't have any lessons yet.");
+      }
     },
+    onError: (err: any) =>
+      alert(
+        err?.response?.data?.message ??
+          "Enrollment failed. Please try again.",
+      ),
   });
 
   const handleEnroll = () => {

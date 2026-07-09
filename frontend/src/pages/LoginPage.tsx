@@ -18,11 +18,17 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const response = await api.post("/auth/login", { email, password });
-      const { token, id, fullName, role } = response.data;
+      const { token, refreshToken, id, fullName, role } = response.data;
       // Backend trả role dạng "ROLE_INSTRUCTOR" — bỏ tiền tố ROLE_ để so sánh.
       const cleanRole = String(role).replace(/^ROLE_/, "");
-      setAuth({ id, email, fullName, role: cleanRole }, token);
-      navigate(cleanRole === "INSTRUCTOR" ? "/instructor" : "/dashboard");
+      setAuth({ id, email, fullName, role: cleanRole }, token, refreshToken);
+      navigate(
+        cleanRole === "INSTRUCTOR"
+          ? "/instructor"
+          : cleanRole === "ADMIN"
+            ? "/admin"
+            : "/dashboard",
+      );
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Login failed. Please try again.",

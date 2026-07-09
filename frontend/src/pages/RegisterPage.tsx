@@ -14,12 +14,9 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post("/auth/register", {
-        fullName,
-        email,
-        password,
-        role: "STUDENT",
-      });
+      // Role is intentionally omitted — public registration always creates a STUDENT
+      // (enforced server-side). Sending a role here would be ignored.
+      await api.post("/auth/register", { fullName, email, password });
       setSuccess(true);
       setTimeout(() => navigate("/login"), 2000);
     } catch (err: any) {

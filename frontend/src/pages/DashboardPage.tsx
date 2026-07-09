@@ -21,7 +21,7 @@ const FALLBACK_THUMB =
   "https://placehold.co/600x400/e2e8f0/64748b?text=Course";
 
 export default function DashboardPage() {
-  const { data: enrollments = [], isLoading } = useQuery({
+  const { data: enrollments = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["enrollments"],
     queryFn: async () => {
       const res = await api.get<Enrollment[]>("/enrollments");
@@ -31,6 +31,21 @@ export default function DashboardPage() {
 
   if (isLoading)
     return <div className="p-8 text-center">Loading dashboard...</div>;
+
+  if (isError)
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-600 mb-4">
+          Couldn't load your dashboard. Please try again.
+        </p>
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+        >
+          Retry
+        </button>
+      </div>
+    );
 
   const completedCount = enrollments.filter((e) => e.completed).length;
 
