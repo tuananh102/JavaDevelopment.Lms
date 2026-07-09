@@ -22,9 +22,14 @@ spring:
 app:
   cors:
     # Danh sách origin được phép gọi API, phân tách bằng dấu phẩy. Default cho local dev
-    # (Vite/Express) + GitHub Pages. Production: đặt APP_CORS_ALLOWED_ORIGINS trên Azure.
-    # KHÔNG dùng "*" — vừa mở toàn bộ API vừa không tương thích khi bật allowCredentials.
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    # (Vite/Express). KHÔNG dùng "*" — vừa mở toàn bộ API vừa không tương thích khi bật
+    # allowCredentials.
+    #
+    # Production: biến môi trường Azure tên CORS_ALLOWED_ORIGINS. Theo quy ước workflow
+    # (main_hcmute-lms.yml), tạo biến GitHub tên APP_CORS_ALLOWED_ORIGINS -> workflow cắt
+    # tiền tố "APP_" -> Azure nhận CORS_ALLOWED_ORIGINS (giống JWT_SECRET). Giá trị là
+    # origin GitHub Pages, KHÔNG có path/dấu "/" cuối, vd: https://tuananh102.github.io
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 
 jwt:
   # Secret được dùng làm khóa HS256 ở dạng chuỗi UTF-8 THÔ (không còn Base64-decode).
