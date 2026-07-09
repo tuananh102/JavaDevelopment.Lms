@@ -43,10 +43,18 @@ export default function MainLayout() {
                       Instructor Area
                     </Link>
                   )}
+                  {user?.role === 'ADMIN' && (
+                    <Link to="/admin" className="flex items-center text-purple-600 hover:text-purple-800 font-medium">
+                      Admin Area
+                    </Link>
+                  )}
                   <div className="flex items-center space-x-4 border-l border-slate-200 pl-4">
-                    <span className="text-sm font-medium text-slate-700">
+                    <Link
+                      to="/profile"
+                      className="text-sm font-medium text-slate-700 hover:text-indigo-600"
+                    >
                       {user?.fullName}
-                    </span>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center text-slate-600 hover:text-red-600 font-medium transition-colors"

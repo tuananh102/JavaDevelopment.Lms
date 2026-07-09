@@ -24,6 +24,8 @@ public class UserDetailsImpl implements UserDetails {
     private String password;
     private String fullName;
 
+    private boolean enabled;
+
     private Collection<? extends GrantedAuthority> authorities;
 
     public static UserDetailsImpl build(User user) {
@@ -34,6 +36,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getEmail(),
                 user.getPasswordHash(),
                 user.getFullName(),
+                user.isActive(),
                 authorities);
     }
 
@@ -69,6 +72,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        // Reflects User.isActive — a deactivated account cannot authenticate.
+        return enabled;
     }
 }

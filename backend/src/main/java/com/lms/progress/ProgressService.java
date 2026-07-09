@@ -1,5 +1,7 @@
 package com.lms.progress;
 
+import com.lms.common.exception.ForbiddenException;
+import com.lms.common.exception.ResourceNotFoundException;
 import com.lms.course.Lesson;
 import com.lms.course.LessonRepository;
 import com.lms.enrollment.Enrollment;
@@ -23,10 +25,9 @@ public class ProgressService {
     @Transactional
     public void markLessonComplete(UUID userId, UUID courseId, UUID lessonId) {
         Enrollment enrollment = enrollmentRepository.findByUserIdAndCourseId(userId, courseId)
-                .orElseThrow(() -> new IllegalArgumentException("User is not enrolled in this course"));
+                .orElseThrow(() -> new ForbiddenException("User is not enrolled in this course"));
 
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("Lesson not found"));
+        Lesson lesson = loadLessonInCourse(lessonId, courseId);
 
         LessonProgress progress = progressRepository.findByEnrollmentIdAndLessonId(enrollment.getId(), lessonId)
                 .orElseGet(() -> LessonProgress.builder()
@@ -56,10 +57,9 @@ public class ProgressService {
     @Transactional
     public void updateVideoProgress(UUID userId, UUID courseId, UUID lessonId, int lastPositionSeconds) {
         Enrollment enrollment = enrollmentRepository.findByUserIdAndCourseId(userId, courseId)
-                .orElseThrow(() -> new IllegalArgumentException("User is not enrolled in this course"));
+                .orElseThrow(() -> new ForbiddenException("User is not enrolled in this course"));
 
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("Lesson not found"));
+        Lesson lesson = loadLessonInCourse(lessonId, courseId);
 
         LessonProgress progress = progressRepository.findByEnrollmentIdAndLessonId(enrollment.getId(), lessonId)
                 .orElseGet(() -> LessonProgress.builder()
@@ -78,11 +78,27 @@ public class ProgressService {
     @Transactional(readOnly = true)
     public List<UUID> getCompletedLessonIds(UUID userId, UUID courseId) {
         Enrollment enrollment = enrollmentRepository.findByUserIdAndCourseId(userId, courseId)
-                .orElseThrow(() -> new IllegalArgumentException("User is not enrolled in this course"));
-                
+                .orElseThrow(() -> new ForbiddenException("User is not enrolled in this course"));
+
         return progressRepository.findByEnrollmentIdAndStatus(enrollment.getId(), LessonProgress.Status.COMPLETED)
                 .stream()
                 .map(p -> p.getLesson().getId())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Loads a lesson and verifies it actually belongs to {@code courseId}. Without
+     * this check a user enrolled in course A could record progress against a lesson
+     * from course B, corrupting A's completion counts (completedLessonsCount could
+     * exceed the real total and flip is_completed incorrectly).
+     */
+    private Lesson loadLessonInCourse(UUID lessonId, UUID courseId) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson not found"));
+        UUID lessonCourseId = lesson.getSection().getCourse().getId();
+        if (!lessonCourseId.equals(courseId)) {
+            throw new ResourceNotFoundException("Lesson not found in this course");
+        }
+        return lesson;
     }
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router";
+import { useParams, Link, Navigate } from "react-router";
+import { useAuthStore } from "../store/authStore";
 import {
   ArrowLeft,
   CheckCircle,
@@ -24,6 +25,7 @@ export default function LearningPage() {
   const { slug, lessonId } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const queryClient = useQueryClient();
+  const role = useAuthStore((s) => s.user?.role);
 
   const { data: course, isLoading: loadingCourse } = useQuery({
     queryKey: ["course", slug],
@@ -35,6 +37,20 @@ export default function LearningPage() {
   });
 
   const courseId = course?.id;
+
+  // Enrollment gate: a student may only open the learning view for a course they're
+  // enrolled in. Instructors/admins can preview (the backend still decides whether to
+  // include the actual lesson content). Without this the lesson video/text was reachable
+  // just by knowing the URL.
+  const canPreviewWithoutEnrollment = role === "INSTRUCTOR" || role === "ADMIN";
+  const { data: enrollmentInfo, isLoading: loadingEnrollment } = useQuery({
+    queryKey: ["enrollment", courseId],
+    queryFn: async () => {
+      const res = await api.get(`/enrollments/courses/${courseId}/check`);
+      return res.data as { enrolled: boolean };
+    },
+    enabled: !!courseId && !canPreviewWithoutEnrollment,
+  });
 
   const { data: completedLessonIds = [], isLoading: loadingProgress } =
     useQuery({
@@ -54,9 +70,14 @@ export default function LearningPage() {
       queryClient.invalidateQueries({ queryKey: ["progress", courseId] });
       queryClient.invalidateQueries({ queryKey: ["enrollments"] });
     },
+    onError: (err: any) =>
+      alert(
+        err?.response?.data?.message ??
+          "Could not mark this lesson complete. Please try again.",
+      ),
   });
 
-  if (loadingCourse || loadingProgress)
+  if (loadingCourse || loadingProgress || loadingEnrollment)
     return (
       <div className="p-8 text-white bg-slate-900 h-screen">
         Loading lesson...
@@ -68,6 +89,11 @@ export default function LearningPage() {
         Course not found
       </div>
     );
+
+  // Not enrolled (and not an instructor/admin previewing) → bounce to the course
+  // landing page where they can enroll.
+  if (!canPreviewWithoutEnrollment && !enrollmentInfo?.enrolled)
+    return <Navigate to={`/courses/${slug}`} replace />;
 
   let allLessons: any[] = [];
   (course.sections ?? []).forEach((s: any) => {

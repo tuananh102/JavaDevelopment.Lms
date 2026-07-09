@@ -69,21 +69,111 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Mock user directory for the admin area.
+  const MOCK_USERS: any[] = [
+    { id: "u1", email: "admin@lms.com", fullName: "Admin User", role: "ADMIN", active: true },
+    { id: "u2", email: "instructor@lms.com", fullName: "Instructor User", role: "INSTRUCTOR", active: true },
+    { id: "u3", email: "student@lms.com", fullName: "Student User", role: "STUDENT", active: true },
+  ];
+
+  const roleFor = (email: string) => {
+    if (email?.includes("admin")) return "ADMIN";
+    if (email?.includes("instructor")) return "INSTRUCTOR";
+    return "STUDENT";
+  };
+
+  // Mock "session": remembered from the last login so /users/me can echo the same
+  // role back on refresh (mirrors the real backend, which reads it from the JWT).
+  let currentUser: any = { ...MOCK_USERS[2] };
+
   app.post("/api/v1/auth/login", (req, res) => {
+    const email = req.body.email ?? "student@lms.com";
+    const role = roleFor(email);
+    currentUser = {
+      id: role === "ADMIN" ? "u1" : role === "INSTRUCTOR" ? "u2" : "u3",
+      email,
+      fullName: `${role.charAt(0)}${role.slice(1).toLowerCase()} User`,
+      role,
+      active: true,
+    };
     res.json({
       token: "mock-jwt-token",
-      id: "u1",
-      fullName: "Test User",
-      role: req.body.email && req.body.email.includes("instructor") ? "INSTRUCTOR" : "STUDENT"
+      refreshToken: "mock-refresh-token",
+      ...currentUser,
     });
   });
 
-  app.post("/api/v1/auth/register", (req, res) => {
-    res.json({ message: "User registered successfully" });
+  app.post("/api/v1/auth/refresh", (req, res) => {
+    if (!req.body?.refreshToken) {
+      return res.status(401).json({ message: "Invalid or expired refresh token" });
+    }
+    res.json({
+      token: "mock-jwt-token",
+      refreshToken: "mock-refresh-token",
+      ...currentUser,
+    });
   });
+
+  app.post("/api/v1/auth/register", (_req, res) => {
+    res.status(201).json({ message: "User registered successfully" });
+  });
+
+  // Current authenticated user — used by the frontend to rehydrate after refresh.
+  app.get("/api/v1/users/me", (_req, res) => {
+    res.json(currentUser);
+  });
+
+  app.put("/api/v1/users/me", (req, res) => {
+    currentUser = { ...currentUser, fullName: req.body.fullName };
+    res.json(currentUser);
+  });
+
+  app.put("/api/v1/users/me/password", (_req, res) => {
+    res.status(204).end();
+  });
+
+  // Admin user management
+  app.get("/api/v1/users", (_req, res) => {
+    res.json(MOCK_USERS);
+  });
+
+  app.patch("/api/v1/users/:id/status", (req, res) => {
+    const user = MOCK_USERS.find((u) => u.id === req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    user.active = req.query.active === "true";
+    res.json(user);
+  });
+
+  const mkSlug = (s: string) =>
+    s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-+)|(-+$)/g, "");
 
   app.get("/api/v1/categories", (_req, res) => {
     res.json(MOCK_CATEGORIES);
+  });
+
+  app.post("/api/v1/categories", (req, res) => {
+    const category = {
+      id: nextId("cat"),
+      name: req.body.name,
+      slug: req.body.slug?.trim() ? mkSlug(req.body.slug) : mkSlug(req.body.name),
+    };
+    MOCK_CATEGORIES.push(category);
+    res.status(201).json(category);
+  });
+
+  app.put("/api/v1/categories/:id", (req, res) => {
+    const cat = MOCK_CATEGORIES.find((c) => c.id === req.params.id);
+    if (!cat) return res.status(404).json({ message: "Category not found" });
+    cat.name = req.body.name;
+    cat.slug = req.body.slug?.trim() ? mkSlug(req.body.slug) : mkSlug(req.body.name);
+    res.json(cat);
+  });
+
+  app.delete("/api/v1/categories/:id", (req, res) => {
+    const i = MOCK_CATEGORIES.findIndex((c) => c.id === req.params.id);
+    if (i < 0) return res.status(404).json({ message: "Category not found" });
+    MOCK_CATEGORIES.splice(i, 1);
+    res.status(204).end();
   });
 
   // API Routes
@@ -116,7 +206,7 @@ async function startServer() {
       ...req.body,
     };
     MOCK_COURSES.push(course);
-    res.json(course);
+    res.status(201).json(course);
   });
 
   app.put("/api/v1/courses/:id", (req, res) => {
@@ -144,7 +234,7 @@ async function startServer() {
       lessons: [],
     };
     course.sections.push(section);
-    res.json({ id: section.id });
+    res.status(201).json({ id: section.id });
   });
 
   app.put("/api/v1/courses/sections/:sectionId", (req, res) => {
@@ -180,7 +270,7 @@ async function startServer() {
       orderIndex: req.body.orderIndex ?? section.lessons.length + 1,
     };
     section.lessons.push(lesson);
-    res.json({ id: lesson.id });
+    res.status(201).json({ id: lesson.id });
   });
 
   app.put("/api/v1/courses/lessons/:lessonId", (req, res) => {
@@ -206,18 +296,22 @@ async function startServer() {
 
   app.post("/api/v1/enrollments/courses/:courseId", (req, res) => {
     const courseId = req.params.courseId;
-    if (MOCK_ENROLLMENTS.find(e => e.course.id === courseId)) {
-      return res.status(400).json({ error: "Already enrolled" });
+    const course = MOCK_COURSES.find((c) => c.id === courseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (MOCK_ENROLLMENTS.find((e) => e.course.id === courseId)) {
+      return res.status(409).json({ message: "User is already enrolled in this course" });
     }
     const enrollment = {
       id: "e" + Date.now(),
-      course: MOCK_COURSE,
+      // Use the ACTUAL course being enrolled in (not always MOCK_COURSE), and the
+      // `completed` field name Jackson emits for EnrollmentDto.isCompleted.
+      course,
       enrolledAt: new Date().toISOString(),
       completedLessonsCount: 0,
-      isCompleted: false
+      completed: false,
     };
     MOCK_ENROLLMENTS.push(enrollment);
-    res.json(enrollment);
+    res.status(201).json(enrollment);
   });
 
   app.get("/api/v1/enrollments", (req, res) => {

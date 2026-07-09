@@ -25,6 +25,12 @@ public class CourseController {
 
     private final CourseService courseService;
 
+    // Whitelist of properties a client may sort by — prevents a bad ?sort= value from
+    // reaching Spring Data as an invalid property (PropertyReferenceException -> 500).
+    private static final java.util.Set<String> SORTABLE =
+            java.util.Set.of("createdAt", "updatedAt", "title", "price");
+    private static final int MAX_PAGE_SIZE = 100;
+
     @GetMapping
     public ResponseEntity<Page<CourseDto>> getPublishedCourses(
             @RequestParam(required = false) UUID categoryId,
@@ -32,9 +38,16 @@ public class CourseController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String[] sort) {
 
-        Sort.Direction direction = sort[1].equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sort[0]));
-        
+        // sort may arrive as ["createdAt","desc"] or a single ["title"] (no direction),
+        // or an empty/garbage value — parse defensively instead of assuming sort[1] exists.
+        String property = (sort.length > 0 && SORTABLE.contains(sort[0])) ? sort[0] : "createdAt";
+        Sort.Direction direction = (sort.length > 1 && sort[1].equalsIgnoreCase("asc"))
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(direction, property));
+
         return ResponseEntity.ok(courseService.getPublishedCourses(categoryId, pageable));
     }
 
@@ -47,15 +60,19 @@ public class CourseController {
         return ResponseEntity.ok(courseService.getCoursesByInstructor(userDetails.getId()));
     }
 
-    // Lấy chi tiết theo id (cho trang editor của instructor).
+    // Lấy chi tiết theo id (cho trang editor của instructor). Chỉ chủ sở hữu/admin.
     @GetMapping("/by-id/{id}")
-    public ResponseEntity<CourseDetailDto> getCourseById(@PathVariable UUID id) {
-        return ResponseEntity.ok(courseService.getCourseById(id));
+    public ResponseEntity<CourseDetailDto> getCourseById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(courseService.getCourseById(id, currentUserId(userDetails), isAdmin(userDetails)));
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<CourseDetailDto> getCourseBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(courseService.getCourseBySlug(slug));
+    public ResponseEntity<CourseDetailDto> getCourseBySlug(
+            @PathVariable String slug,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(courseService.getCourseBySlug(slug, currentUserId(userDetails), isAdmin(userDetails)));
     }
 
     @PutMapping("/{id}")
@@ -74,7 +91,16 @@ public class CourseController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         
         CourseDto courseDto = courseService.createCourse(request, userDetails.getId());
-        return ResponseEntity.ok(courseDto);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(courseDto);
+    }
+
+    private static UUID currentUserId(UserDetailsImpl userDetails) {
+        return userDetails != null ? userDetails.getId() : null;
+    }
+
+    private static boolean isAdmin(UserDetailsImpl userDetails) {
+        return userDetails != null && userDetails.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     @PatchMapping("/{id}/status")

@@ -20,7 +20,7 @@ const STATUS_STYLE: Record<Course["status"], string> = {
 export default function InstructorDashboardPage() {
   const queryClient = useQueryClient();
 
-  const { data: courses = [], isLoading } = useQuery({
+  const { data: courses = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["instructor-courses"],
     queryFn: async () => {
       const res = await api.get<Course[]>("/courses/instructor");
@@ -65,6 +65,18 @@ export default function InstructorDashboardPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-slate-500">
             <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
+          </div>
+        ) : isError ? (
+          <div className="py-16 text-center">
+            <p className="text-red-600 mb-4">
+              Couldn't load your courses. Please try again.
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+            >
+              Retry
+            </button>
           </div>
         ) : courses.length === 0 ? (
           <div className="py-16 text-center text-slate-500">
