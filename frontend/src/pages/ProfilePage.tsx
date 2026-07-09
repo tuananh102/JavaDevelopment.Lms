@@ -52,7 +52,7 @@ export default function ProfilePage() {
       {/* Profile info */}
       <section className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
         <h2 className="flex items-center font-semibold text-slate-800">
-          <UserIcon className="w-5 h-5 mr-2 text-indigo-600" /> Account
+          <UserIcon className="w-5 h-5 mr-2 text-primary-600" /> Account
         </h2>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -74,14 +74,14 @@ export default function ProfilePage() {
               setFullName(e.target.value);
               setProfileMsg("");
             }}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         {profileMsg && <p className="text-sm text-slate-600">{profileMsg}</p>}
         <button
           onClick={() => fullName.trim() && profileMutation.mutate()}
           disabled={!fullName.trim() || profileMutation.isPending}
-          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50"
+          className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50"
         >
           {profileMutation.isPending && (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -93,7 +93,7 @@ export default function ProfilePage() {
       {/* Change password */}
       <section className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
         <h2 className="flex items-center font-semibold text-slate-800">
-          <KeyRound className="w-5 h-5 mr-2 text-indigo-600" /> Change Password
+          <KeyRound className="w-5 h-5 mr-2 text-primary-600" /> Change Password
         </h2>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -106,7 +106,7 @@ export default function ProfilePage() {
               setCurrentPassword(e.target.value);
               setPwMsg(null);
             }}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         <div>
@@ -120,11 +120,11 @@ export default function ProfilePage() {
               setNewPassword(e.target.value);
               setPwMsg(null);
             }}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         {pwMsg && (
-          <p className={pwMsg.ok ? "text-sm text-emerald-600" : "text-sm text-red-600"}>
+          <p className={pwMsg.ok ? "text-sm text-success-600" : "text-sm text-danger-600"}>
             {pwMsg.text}
           </p>
         )}

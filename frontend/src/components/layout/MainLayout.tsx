@@ -17,7 +17,7 @@ export default function MainLayout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center space-x-2">
-              <BookOpen className="h-6 w-6 text-indigo-600" />
+              <BookOpen className="h-6 w-6 text-primary-600" />
               <span className="font-bold text-xl text-slate-900">
                 LMS Platform
               </span>
@@ -39,25 +39,25 @@ export default function MainLayout() {
                     Dashboard
                   </Link>
                   {user?.role === 'INSTRUCTOR' && (
-                    <Link to="/instructor" className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium">
+                    <Link to="/instructor" className="flex items-center text-primary-600 hover:text-primary-800 font-medium">
                       Instructor Area
                     </Link>
                   )}
                   {user?.role === 'ADMIN' && (
-                    <Link to="/admin" className="flex items-center text-purple-600 hover:text-purple-800 font-medium">
+                    <Link to="/admin" className="flex items-center text-admin-600 hover:text-admin-800 font-medium">
                       Admin Area
                     </Link>
                   )}
                   <div className="flex items-center space-x-4 border-l border-slate-200 pl-4">
                     <Link
                       to="/profile"
-                      className="text-sm font-medium text-slate-700 hover:text-indigo-600"
+                      className="text-sm font-medium text-slate-700 hover:text-primary-600"
                     >
                       {user?.fullName}
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center text-slate-600 hover:text-red-600 font-medium transition-colors"
+                      className="flex items-center text-slate-600 hover:text-danger-600 font-medium transition-colors"
                     >
                       <LogOut className="h-5 w-5 mr-1" />
                       Logout
@@ -86,7 +86,7 @@ export default function MainLayout() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="md:col-span-2">
               <Link to="/" className="flex items-center space-x-2">
-                <BookOpen className="h-6 w-6 text-indigo-400" />
+                <BookOpen className="h-6 w-6 text-primary-400" />
                 <span className="font-bold text-xl text-white">
                   LMS Platform
                 </span>

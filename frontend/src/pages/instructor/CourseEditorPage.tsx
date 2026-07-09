@@ -249,7 +249,7 @@ export default function CourseEditorPage() {
         <button
           onClick={() => saveMutation.mutate()}
           disabled={!canSave}
-          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50"
+          className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50"
         >
           {saveMutation.isPending ? (
             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -261,7 +261,7 @@ export default function CourseEditorPage() {
       </div>
 
       {saveMutation.isError && (
-        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+        <div className="text-danger-600 text-sm bg-danger-50 p-3 rounded-md">
           Save failed. Check that the slug is unique and all required fields are
           filled.
         </div>
@@ -401,7 +401,7 @@ export default function CourseEditorPage() {
                                 })
                               }
                               disabled={updateSectionMutation.isPending}
-                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-md shrink-0"
+                              className="p-2 text-success-600 hover:bg-success-50 rounded-md shrink-0"
                               title="Save"
                             >
                               <Check className="w-4 h-4" />
@@ -427,7 +427,7 @@ export default function CourseEditorPage() {
                                     title: section.title,
                                   })
                                 }
-                                className="p-2 text-slate-400 hover:text-blue-600 rounded-md"
+                                className="p-2 text-slate-400 hover:text-primary-600 rounded-md"
                                 title="Rename section"
                               >
                                 <Pencil className="w-4 h-4" />
@@ -442,7 +442,7 @@ export default function CourseEditorPage() {
                                     deleteSectionMutation.mutate(section.id);
                                 }}
                                 disabled={deleteSectionMutation.isPending}
-                                className="p-2 text-slate-400 hover:text-red-600 rounded-md"
+                                className="p-2 text-slate-400 hover:text-danger-600 rounded-md"
                                 title="Delete section"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -493,7 +493,7 @@ export default function CourseEditorPage() {
                                           !editingLesson.title.trim() ||
                                           updateLessonMutation.isPending
                                         }
-                                        className="flex items-center px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                                        className="flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
                                       >
                                         <Check className="w-4 h-4 mr-1" /> Save
                                         lesson
@@ -506,13 +506,13 @@ export default function CourseEditorPage() {
                                       {idx + 1}. {lesson.title}
                                       {lesson.type === "VIDEO" &&
                                         !lesson.contentUrl && (
-                                          <span className="ml-2 text-xs text-amber-600">
+                                          <span className="ml-2 text-xs text-warning-600">
                                             (no video)
                                           </span>
                                         )}
                                       {lesson.type === "ARTICLE" &&
                                         !lesson.contentText && (
-                                          <span className="ml-2 text-xs text-amber-600">
+                                          <span className="ml-2 text-xs text-warning-600">
                                             (no content)
                                           </span>
                                         )}
@@ -537,7 +537,7 @@ export default function CourseEditorPage() {
                                               : 0,
                                           })
                                         }
-                                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md"
+                                        className="p-1.5 text-slate-400 hover:text-primary-600 rounded-md"
                                         title="Edit lesson"
                                       >
                                         <Pencil className="w-4 h-4" />
@@ -554,7 +554,7 @@ export default function CourseEditorPage() {
                                             );
                                         }}
                                         disabled={deleteLessonMutation.isPending}
-                                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-md"
+                                        className="p-1.5 text-slate-400 hover:text-danger-600 rounded-md"
                                         title="Delete lesson"
                                       >
                                         <Trash2 className="w-4 h-4" />
@@ -593,7 +593,7 @@ export default function CourseEditorPage() {
                               disabled={
                                 !draft.title.trim() || addLessonMutation.isPending
                               }
-                              className="flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-50"
+                              className="flex items-center px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg disabled:opacity-50"
                             >
                               <Plus className="w-4 h-4 mr-1" /> Add lesson
                             </button>
@@ -619,7 +619,7 @@ export default function CourseEditorPage() {
                       addSectionMutation.mutate(newSection.trim())
                     }
                     disabled={addSectionMutation.isPending}
-                    className="flex items-center px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg shrink-0"
+                    className="flex items-center px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg shrink-0"
                   >
                     <Plus className="w-4 h-4 mr-1" /> Add Section
                   </button>
@@ -634,7 +634,7 @@ export default function CourseEditorPage() {
 }
 
 const inputCls =
-  "w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white";
+  "w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white";
 
 /**
  * Editable fields for a lesson: title, type, duration, and the type-specific content

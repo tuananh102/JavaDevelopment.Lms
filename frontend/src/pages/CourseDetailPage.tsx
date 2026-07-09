@@ -73,7 +73,7 @@ export default function CourseDetailPage() {
   };
 
   if (isLoading) return <div className="p-8 text-center">Loading course...</div>;
-  if (!course) return <div className="p-8 text-center text-red-500">Course not found</div>;
+  if (!course) return <div className="p-8 text-center text-danger-500">Course not found</div>;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -88,7 +88,7 @@ export default function CourseDetailPage() {
           </p>
           <div className="flex items-center space-x-4 text-sm text-slate-600">
             <span className="font-medium">
-              Created by <span className="text-indigo-600">Instructor</span>
+              Created by <span className="text-primary-600">Instructor</span>
             </span>
             <span className="flex items-center">
               <Clock className="w-4 h-4 mr-1" /> Self-paced
@@ -117,9 +117,9 @@ export default function CourseDetailPage() {
                     >
                       <div className="flex items-center space-x-3">
                         {lesson.type === "VIDEO" ? (
-                          <PlayCircle className="w-5 h-5 text-indigo-500" />
+                          <PlayCircle className="w-5 h-5 text-primary-500" />
                         ) : (
-                          <BookOpenIcon className="w-5 h-5 text-indigo-500" />
+                          <BookOpenIcon className="w-5 h-5 text-primary-500" />
                         )}
                         <span className="text-slate-700">
                           {idx + 1}. {lesson.title}
@@ -160,7 +160,7 @@ export default function CourseDetailPage() {
             <button
               onClick={handleEnroll}
               disabled={enrollMutation.isPending}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex justify-center items-center"
+              className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex justify-center items-center"
             >
               {enrollmentInfo?.enrolled
                 ? "Continue Learning"

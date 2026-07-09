@@ -261,7 +261,7 @@ export default function LearningPage() {
               value={progressPercent}
             >
               <Progress.Indicator
-                className="bg-indigo-500 w-full h-full transition-transform duration-500 ease-out"
+                className="bg-primary-500 w-full h-full transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(-${100 - progressPercent}%)` }}
               />
             </Progress.Root>
@@ -326,13 +326,13 @@ export default function LearningPage() {
                 className={cn(
                   "flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-colors border shrink-0",
                   isCompleted
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default"
+                    ? "bg-success-50 text-success-700 border-success-200 cursor-default"
                     : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
                 )}
               >
                 {isCompleted ? (
                   <>
-                    <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" />{" "}
+                    <CheckCircle className="w-4 h-4 mr-2 text-success-600" />{" "}
                     Completed
                   </>
                 ) : (
@@ -373,7 +373,7 @@ export default function LearningPage() {
             {nextLesson ? (
               <Link
                 to={`/learn/${slug}/lesson/${nextLesson.id}`}
-                className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm px-4 py-2 bg-indigo-50 rounded-lg"
+                className="flex items-center text-primary-600 hover:text-primary-800 font-medium text-sm px-4 py-2 bg-primary-50 rounded-lg"
               >
                 Next Lesson <ChevronRight className="w-5 h-5 ml-1" />
               </Link>
@@ -422,12 +422,12 @@ export default function LearningPage() {
                         className={cn(
                           "flex items-center px-4 py-3 border-l-2",
                           isActive
-                            ? "bg-indigo-50 border-indigo-600"
+                            ? "bg-primary-50 border-primary-600"
                             : "hover:bg-slate-50 border-transparent",
                         )}
                       >
                         {isLessonComplete ? (
-                          <CheckCircle className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
+                          <CheckCircle className="w-4 h-4 mr-3 text-success-500 shrink-0" />
                         ) : (
                           <Circle className="w-4 h-4 mr-3 text-slate-300 shrink-0" />
                         )}
@@ -435,7 +435,7 @@ export default function LearningPage() {
                           className={cn(
                             "text-sm line-clamp-2",
                             isActive
-                              ? "font-medium text-indigo-900"
+                              ? "font-medium text-primary-900"
                               : "text-slate-600",
                           )}
                         >

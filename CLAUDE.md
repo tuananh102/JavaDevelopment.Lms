@@ -49,6 +49,23 @@ Seed accounts (from `V2__seed_data.sql`), password is `password` for all: `admin
 - **Auth state** `src/store/authStore.ts`: Zustand store; the token lives in `localStorage` (interceptor reads it there directly).
 - **Server state** should go through TanStack Query; **client/UI state** through Zustand.
 - Styling: **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first, `@import "tailwindcss"` in `src/index.css` — no `tailwind.config.js`). Icons via `lucide-react`.
+
+### Design system (follow when building any UI)
+
+All color tokens are defined once in `src/index.css` (`@theme inline`). **Use semantic tokens, never raw palette names** (`indigo-*`, `red-*`, `emerald-*`, `amber-*`, `purple-*`, `blue-*` are forbidden in components — rebranding must only require editing `index.css`):
+
+- `primary-*` — brand & all interactive elements (links, buttons, active states, focus rings). Currently aliases indigo.
+- `success-*` — positive states (completed, published, free). `danger-*` — errors & destructive actions. `warning-*` — pending/caution (drafts). `admin-*` — admin-only accents.
+- Neutrals stay on **`slate-*`**: page bg `slate-50`, cards/nav `white`, borders `slate-200` (inputs `slate-300`), headings `slate-900`, body `slate-600`, muted `slate-500`. Dark surfaces (learn-page header, footer) are `slate-900` with `slate-300/400` text and `primary-400` accents.
+
+Recurring component recipes (copy these, don't invent variants):
+
+- **Page container**: provided by `MainLayout` (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`) — pages don't re-add it.
+- **Card**: `bg-white rounded-xl border border-slate-200` (+ `hover:shadow-lg transition-shadow` if clickable).
+- **Primary button**: `bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg px-4 py-2`. **Secondary**: `bg-white border border-slate-300 text-slate-700 hover:bg-slate-50`. Disabled: `disabled:opacity-60`.
+- **Input/select**: `border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500`.
+- **Filter chip**: pill `rounded-full px-4 py-1.5 text-sm font-medium`; active = `bg-primary-600 text-white`, inactive = secondary-button colors.
+- **Status badge**: `text-xs font-semibold px-2 py-1 rounded-md` with `{color}-50` bg + `{color}-600/700` text (e.g. `bg-success-50 text-success-700`).
 - **Current state of pages**: several pages (`CatalogPage`, `CourseEditorPage`, etc.) still render **hardcoded MOCK data** and stubbed handlers rather than calling the API. When implementing real behavior, wire them to `api.ts` + TanStack Query; the mock endpoints in `frontend/server.ts` define the expected request/response shapes.
 
 ## API surface (backend ↔ frontend contract)

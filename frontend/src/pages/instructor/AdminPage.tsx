@@ -33,8 +33,8 @@ interface ManagedUser {
 }
 
 const ROLE_STYLE: Record<string, string> = {
-  ADMIN: "bg-purple-100 text-purple-700",
-  INSTRUCTOR: "bg-indigo-100 text-indigo-700",
+  ADMIN: "bg-admin-100 text-admin-700",
+  INSTRUCTOR: "bg-primary-100 text-primary-700",
   STUDENT: "bg-slate-100 text-slate-600",
 };
 
@@ -42,7 +42,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-10 max-w-4xl mx-auto">
       <div className="flex items-center space-x-3">
-        <ShieldCheck className="w-7 h-7 text-purple-600" />
+        <ShieldCheck className="w-7 h-7 text-admin-600" />
         <h1 className="text-3xl font-bold text-slate-900">Admin</h1>
       </div>
       <CategoriesSection />
@@ -105,7 +105,7 @@ function CategoriesSection() {
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading...
           </div>
         ) : isError ? (
-          <div className="text-red-600 text-sm">
+          <div className="text-danger-600 text-sm">
             Failed to load categories.{" "}
             <button onClick={() => refetch()} className="underline">
               Retry
@@ -136,7 +136,7 @@ function CategoriesSection() {
                       })
                     }
                     disabled={updateMutation.isPending}
-                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-md"
+                    className="p-2 text-success-600 hover:bg-success-50 rounded-md"
                   >
                     <Check className="w-4 h-4" />
                   </button>
@@ -156,7 +156,7 @@ function CategoriesSection() {
                   <div className="flex items-center shrink-0">
                     <button
                       onClick={() => setEditing({ id: c.id, name: c.name })}
-                      className="p-2 text-slate-400 hover:text-blue-600 rounded-md"
+                      className="p-2 text-slate-400 hover:text-primary-600 rounded-md"
                       title="Rename"
                     >
                       <Pencil className="w-4 h-4" />
@@ -167,7 +167,7 @@ function CategoriesSection() {
                           deleteMutation.mutate(c.id);
                       }}
                       disabled={deleteMutation.isPending}
-                      className="p-2 text-slate-400 hover:text-red-600 rounded-md"
+                      className="p-2 text-slate-400 hover:text-danger-600 rounded-md"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -190,7 +190,7 @@ function CategoriesSection() {
           <button
             onClick={() => newName.trim() && createMutation.mutate(newName.trim())}
             disabled={!newName.trim() || createMutation.isPending}
-            className="flex items-center px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-50"
+            className="flex items-center px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg disabled:opacity-50"
           >
             <Plus className="w-4 h-4 mr-1" /> Add
           </button>
@@ -229,7 +229,7 @@ function UsersSection() {
           <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
         </div>
       ) : isError ? (
-        <div className="py-12 text-center text-red-600 text-sm">
+        <div className="py-12 text-center text-danger-600 text-sm">
           Failed to load users.{" "}
           <button onClick={() => refetch()} className="underline">
             Retry
@@ -253,7 +253,7 @@ function UsersSection() {
                     {u.role}
                   </span>
                   {!u.active && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-danger-100 text-danger-700">
                       Disabled
                     </span>
                   )}
@@ -269,8 +269,8 @@ function UsersSection() {
                   className={
                     "flex items-center px-3 py-1.5 text-sm rounded-lg transition-colors shrink-0 " +
                     (u.active
-                      ? "text-red-700 hover:bg-red-50"
-                      : "text-emerald-700 hover:bg-emerald-50")
+                      ? "text-danger-700 hover:bg-danger-50"
+                      : "text-success-700 hover:bg-success-50")
                   }
                 >
                   {u.active ? (
@@ -293,4 +293,4 @@ function UsersSection() {
 }
 
 const inputCls =
-  "px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white";
+  "px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white";

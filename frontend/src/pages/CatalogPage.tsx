@@ -118,13 +118,13 @@ export default function CatalogPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search courses..."
-              className="pl-9 pr-4 py-2 w-full sm:w-64 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="pl-9 pr-4 py-2 w-full sm:w-64 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -141,7 +141,7 @@ export default function CatalogPage() {
           onClick={() => setCategoryId(null)}
           className={
             categoryId === null
-              ? "px-4 py-1.5 rounded-full text-sm font-medium bg-indigo-600 text-white"
+              ? "px-4 py-1.5 rounded-full text-sm font-medium bg-primary-600 text-white"
               : "px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
           }
         >
@@ -155,7 +155,7 @@ export default function CatalogPage() {
             }
             className={
               categoryId === cat.id
-                ? "px-4 py-1.5 rounded-full text-sm font-medium bg-indigo-600 text-white"
+                ? "px-4 py-1.5 rounded-full text-sm font-medium bg-primary-600 text-white"
                 : "px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
             }
           >
@@ -179,7 +179,7 @@ export default function CatalogPage() {
       )}
 
       {isError && (
-        <div className="flex items-center justify-center py-24 text-red-600">
+        <div className="flex items-center justify-center py-24 text-danger-600">
           <AlertCircle className="w-6 h-6 mr-2" /> Failed to load courses. Please
           try again later.
         </div>
@@ -208,12 +208,12 @@ export default function CatalogPage() {
               </div>
               <div className="p-5 flex flex-col flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md flex items-center">
+                  <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-md flex items-center">
                     <BookOpen className="w-3 h-3 mr-1" />
                     {LEVEL_LABEL[course.level] ?? course.level}
                   </span>
                 </div>
-                <h3 className="font-bold text-lg text-slate-900 line-clamp-2 mb-2 group-hover:text-indigo-600 transition-colors">
+                <h3 className="font-bold text-lg text-slate-900 line-clamp-2 mb-2 group-hover:text-primary-600 transition-colors">
                   {course.title}
                 </h3>
                 <p className="text-slate-600 text-sm line-clamp-2 mb-4 flex-1">
@@ -224,7 +224,7 @@ export default function CatalogPage() {
                   <span className="font-bold text-lg text-slate-900">
                     {course.price === 0 ? "Free" : `$${course.price}`}
                   </span>
-                  <span className="text-sm font-medium text-indigo-600 group-hover:underline">
+                  <span className="text-sm font-medium text-primary-600 group-hover:underline">
                     View details →
                   </span>
                 </div>

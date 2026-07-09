@@ -35,12 +35,12 @@ export default function DashboardPage() {
   if (isError)
     return (
       <div className="p-8 text-center">
-        <p className="text-red-600 mb-4">
+        <p className="text-danger-600 mb-4">
           Couldn't load your dashboard. Please try again.
         </p>
         <button
           onClick={() => refetch()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
         >
           Retry
         </button>
@@ -60,8 +60,8 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
         <div className="bg-white p-6 rounded-xl border border-slate-200 flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-indigo-600" />
+          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+            <BookOpen className="w-6 h-6 text-primary-600" />
           </div>
           <div>
             <p className="text-sm font-medium text-slate-500">
@@ -73,8 +73,8 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl border border-slate-200 flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-            <Award className="w-6 h-6 text-emerald-600" />
+          <div className="w-12 h-12 rounded-full bg-success-100 flex items-center justify-center">
+            <Award className="w-6 h-6 text-success-600" />
           </div>
           <div>
             <p className="text-sm font-medium text-slate-500">
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                 <div className="mt-auto pt-4">
                   <div className="flex justify-between items-center mb-4 text-sm">
                     {enrollment.completed ? (
-                      <span className="inline-flex items-center text-emerald-700 font-medium">
+                      <span className="inline-flex items-center text-success-700 font-medium">
                         <CheckCircle2 className="w-4 h-4 mr-1" /> Completed
                       </span>
                     ) : (
@@ -132,7 +132,7 @@ export default function DashboardPage() {
               <br />
               <Link
                 to="/"
-                className="text-indigo-600 hover:underline mt-2 inline-block font-medium"
+                className="text-primary-600 hover:underline mt-2 inline-block font-medium"
               >
                 Browse Catalog
               </Link>

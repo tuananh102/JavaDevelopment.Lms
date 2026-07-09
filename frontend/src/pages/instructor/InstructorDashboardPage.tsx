@@ -12,8 +12,8 @@ interface Course {
 }
 
 const STATUS_STYLE: Record<Course["status"], string> = {
-  PUBLISHED: "bg-emerald-100 text-emerald-700",
-  DRAFT: "bg-amber-100 text-amber-700",
+  PUBLISHED: "bg-success-100 text-success-700",
+  DRAFT: "bg-warning-100 text-warning-700",
   ARCHIVED: "bg-slate-200 text-slate-600",
 };
 
@@ -50,7 +50,7 @@ export default function InstructorDashboardPage() {
         </div>
         <Link
           to="/instructor/course/new"
-          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+          className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
         >
           <Plus className="w-5 h-5 mr-2" />
           Create Course
@@ -68,12 +68,12 @@ export default function InstructorDashboardPage() {
           </div>
         ) : isError ? (
           <div className="py-16 text-center">
-            <p className="text-red-600 mb-4">
+            <p className="text-danger-600 mb-4">
               Couldn't load your courses. Please try again.
             </p>
             <button
               onClick={() => refetch()}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
             >
               Retry
             </button>
@@ -109,7 +109,7 @@ export default function InstructorDashboardPage() {
                         statusMutation.mutate({ id: course.id, status: "DRAFT" })
                       }
                       disabled={statusMutation.isPending}
-                      className="flex items-center px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                      className="flex items-center px-3 py-1.5 text-sm text-warning-700 hover:bg-warning-50 rounded-lg transition-colors"
                       title="Unpublish"
                     >
                       <Undo2 className="w-4 h-4 mr-1" /> Unpublish
@@ -123,7 +123,7 @@ export default function InstructorDashboardPage() {
                         })
                       }
                       disabled={statusMutation.isPending}
-                      className="flex items-center px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                      className="flex items-center px-3 py-1.5 text-sm text-success-700 hover:bg-success-50 rounded-lg transition-colors"
                       title="Publish"
                     >
                       <Send className="w-4 h-4 mr-1" /> Publish
@@ -131,14 +131,14 @@ export default function InstructorDashboardPage() {
                   )}
                   <Link
                     to={`/courses/${course.slug}`}
-                    className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                    className="p-2 text-slate-400 hover:text-primary-600 transition-colors"
                     title="View as student"
                   >
                     <Eye className="w-5 h-5" />
                   </Link>
                   <Link
                     to={`/instructor/course/${course.id}`}
-                    className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                    className="p-2 text-slate-400 hover:text-primary-600 transition-colors"
                     title="Edit course"
                   >
                     <Edit className="w-5 h-5" />
@@ -161,7 +161,7 @@ export default function InstructorDashboardPage() {
                         }
                       }}
                       disabled={statusMutation.isPending}
-                      className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+                      className="p-2 text-slate-400 hover:text-danger-600 transition-colors"
                       title="Delete (archive) course"
                     >
                       <Archive className="w-5 h-5" />

@@ -66,7 +66,7 @@ export default function CheckoutPage() {
         <p className="text-slate-700">{msg}</p>
         <Link
           to="/"
-          className="inline-block text-indigo-600 hover:underline font-medium"
+          className="inline-block text-primary-600 hover:underline font-medium"
         >
           Back to catalog
         </Link>
@@ -86,7 +86,7 @@ export default function CheckoutPage() {
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
           <h1 className="font-semibold text-slate-800 flex items-center">
-            <CreditCard className="w-5 h-5 mr-2 text-indigo-600" /> Checkout
+            <CreditCard className="w-5 h-5 mr-2 text-primary-600" /> Checkout
           </h1>
         </div>
 
@@ -125,8 +125,8 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="flex items-start text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <ShieldCheck className="w-4 h-4 mr-2 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex items-start text-xs text-slate-500 bg-warning-50 border border-warning-200 rounded-lg p-3">
+            <ShieldCheck className="w-4 h-4 mr-2 text-warning-600 shrink-0 mt-0.5" />
             Đây là thanh toán MÔ PHỎNG cho mục đích demo — không có giao dịch thật.
             Bấm nút bên dưới để hoàn tất và ghi danh.
           </div>
@@ -134,7 +134,7 @@ export default function CheckoutPage() {
           <button
             onClick={() => payMutation.mutate()}
             disabled={payMutation.isPending || order?.status === "PAID"}
-            className="w-full flex justify-center items-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-60"
+            className="w-full flex justify-center items-center bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-60"
           >
             {payMutation.isPending && (
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
