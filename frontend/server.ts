@@ -69,6 +69,45 @@ async function startServer() {
 
   app.use(express.json());
 
+  // --- Real-backend proxy mode -------------------------------------------
+  // Set BACKEND_URL (e.g. https://hcmute-lms.azurewebsites.net) to forward every
+  // /api/v1/* call to the real backend instead of the mocks below. Because the
+  // browser still talks to localhost:3000 (same origin), the backend's CORS
+  // allowlist doesn't matter here. `npm run dev:remote` uses this.
+  const BACKEND_URL = process.env.BACKEND_URL?.replace(/\/+$/, "");
+  if (BACKEND_URL) {
+    console.log(`[proxy] /api/v1/* -> ${BACKEND_URL}`);
+    app.use("/api/v1", async (req, res) => {
+      try {
+        // req.url is the path after the /api/v1 mount, query string included.
+        const target = `${BACKEND_URL}/api/v1${req.url}`;
+        const headers: Record<string, string> = {};
+        if (req.headers.authorization)
+          headers.authorization = String(req.headers.authorization);
+        const isJson = String(req.headers["content-type"] ?? "").includes(
+          "application/json",
+        );
+        if (isJson) headers["content-type"] = "application/json";
+        const upstream = await fetch(target, {
+          method: req.method,
+          headers,
+          body:
+            !["GET", "HEAD"].includes(req.method) && isJson
+              ? JSON.stringify(req.body ?? {})
+              : undefined,
+        });
+        res.status(upstream.status);
+        const ct = upstream.headers.get("content-type");
+        if (ct) res.setHeader("content-type", ct);
+        res.send(Buffer.from(await upstream.arrayBuffer()));
+      } catch (e: any) {
+        res.status(502).json({
+          message: `Proxy to ${BACKEND_URL} failed: ${e?.message ?? e}`,
+        });
+      }
+    });
+  }
+
   // Mock user directory for the admin area.
   const MOCK_USERS: any[] = [
     { id: "u1", email: "admin@lms.com", fullName: "Admin User", role: "ADMIN", active: true },
@@ -177,12 +216,38 @@ async function startServer() {
   });
 
   // API Routes
-  app.get("/api/v1/courses", (_req, res) => {
-    const published = MOCK_COURSES.filter((c) => c.status === "PUBLISHED");
+  // Mirrors backend GET /courses: ?q (keyword in title/description), ?categoryId,
+  // ?page&size, ?sort=field,dir (whitelisted fields).
+  app.get("/api/v1/courses", (req, res) => {
+    const q = String(req.query.q ?? "").trim().toLowerCase();
+    const categoryId = req.query.categoryId ? String(req.query.categoryId) : null;
+    const page = Math.max(parseInt(String(req.query.page ?? "0"), 10) || 0, 0);
+    const size = Math.min(Math.max(parseInt(String(req.query.size ?? "10"), 10) || 10, 1), 100);
+    const [sortField, sortDir] = String(req.query.sort ?? "createdAt,desc").split(",");
+
+    let list = MOCK_COURSES.filter((c) => c.status === "PUBLISHED");
+    if (categoryId) list = list.filter((c) => c.categoryId === categoryId);
+    if (q)
+      list = list.filter(
+        (c) =>
+          c.title?.toLowerCase().includes(q) ||
+          c.description?.toLowerCase().includes(q),
+      );
+
+    const SORTABLE = new Set(["createdAt", "updatedAt", "title", "price"]);
+    const field = SORTABLE.has(sortField) ? sortField : "createdAt";
+    const dir = sortDir?.toLowerCase() === "asc" ? 1 : -1;
+    list = [...list].sort((a, b) => {
+      const av = a[field] ?? "";
+      const bv = b[field] ?? "";
+      return (av > bv ? 1 : av < bv ? -1 : 0) * dir;
+    });
+
+    const start = page * size;
     res.json({
-      content: published,
-      totalElements: published.length,
-      totalPages: 1,
+      content: list.slice(start, start + size),
+      totalElements: list.length,
+      totalPages: Math.ceil(list.length / size),
     });
   });
 
