@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { BookOpen, Loader2, AlertCircle } from "lucide-react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { BookOpen, Loader2, AlertCircle, Search } from "lucide-react";
 import api from "../lib/api";
 
 const PAGE_SIZE = 12;
@@ -25,6 +25,19 @@ interface Page<T> {
   totalPages: number;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+const SORT_OPTIONS = [
+  { value: "createdAt,desc", label: "Newest" },
+  { value: "title,asc", label: "Title A–Z" },
+  { value: "price,asc", label: "Price: Low to High" },
+  { value: "price,desc", label: "Price: High to Low" },
+] as const;
+
 const LEVEL_LABEL: Record<Course["level"], string> = {
   BEGINNER: "Beginner",
   INTERMEDIATE: "Intermediate",
@@ -37,19 +50,44 @@ const FALLBACK_THUMB =
 
 export default function CatalogPage() {
   const [search, setSearch] = useState("");
+  // Debounced copy of `search` — the query only refetches when the user pauses
+  // typing, instead of on every keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [sort, setSort] = useState<string>(SORT_OPTIONS[0].value);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await api.get<Category[]>("/categories");
+      return res.data;
+    },
+  });
 
   const {
     data,
     isLoading,
     isError,
+    isFetching,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["courses"],
+    queryKey: ["courses", { q: debouncedSearch, categoryId, sort }],
     queryFn: async ({ pageParam }) => {
       const res = await api.get<Page<Course>>("/courses", {
-        params: { page: pageParam, size: PAGE_SIZE, sort: "createdAt,desc" },
+        params: {
+          page: pageParam,
+          size: PAGE_SIZE,
+          sort,
+          q: debouncedSearch || undefined,
+          categoryId: categoryId ?? undefined,
+        },
       });
       return res.data;
     },
@@ -60,15 +98,8 @@ export default function CatalogPage() {
     },
   });
 
-  const allCourses = data?.pages.flatMap((p) => p.content) ?? [];
-  const courses = allCourses.filter((c) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      c.title.toLowerCase().includes(q) ||
-      c.description.toLowerCase().includes(q)
-    );
-  });
+  const courses = data?.pages.flatMap((p) => p.content) ?? [];
+  const totalResults = data?.pages[0]?.totalElements ?? 0;
 
   return (
     <div className="space-y-8">
@@ -79,13 +110,66 @@ export default function CatalogPage() {
             Find the right course to advance your career.
           </p>
         </div>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search courses..."
-          className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search courses..."
+              className="pl-9 pr-4 py-2 w-full sm:w-64 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                Sort: {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Category filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setCategoryId(null)}
+          className={
+            categoryId === null
+              ? "px-4 py-1.5 rounded-full text-sm font-medium bg-indigo-600 text-white"
+              : "px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
+          }
+        >
+          All
+        </button>
+        {categories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() =>
+              setCategoryId(categoryId === cat.id ? null : cat.id)
+            }
+            className={
+              categoryId === cat.id
+                ? "px-4 py-1.5 rounded-full text-sm font-medium bg-indigo-600 text-white"
+                : "px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
+            }
+          >
+            {cat.name}
+          </button>
+        ))}
+        {!isLoading && !isError && (
+          <span className="ml-auto text-sm text-slate-500 flex items-center">
+            {isFetching && !isFetchingNextPage && (
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+            )}
+            {totalResults} course{totalResults === 1 ? "" : "s"}
+          </span>
+        )}
       </div>
 
       {isLoading && (
@@ -150,7 +234,7 @@ export default function CatalogPage() {
         </div>
       )}
 
-      {!isLoading && !isError && hasNextPage && !search.trim() && (
+      {!isLoading && !isError && hasNextPage && (
         <div className="flex justify-center pt-4">
           <button
             onClick={() => fetchNextPage()}
