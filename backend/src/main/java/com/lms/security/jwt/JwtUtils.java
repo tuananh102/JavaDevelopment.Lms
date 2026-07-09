@@ -22,15 +22,47 @@ public class JwtUtils {
     @Value("${jwt.expiration-ms}")
     private int jwtExpirationMs;
 
+    @Value("${jwt.refresh-expiration-ms}")
+    private long jwtRefreshExpirationMs;
+
     public String generateJwtToken(Authentication authentication) {
         UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
+        return generateAccessToken(userPrincipal.getEmail());
+    }
 
+    /** Short-lived access token used on every request. */
+    public String generateAccessToken(String username) {
         return Jwts.builder()
-                .subject((userPrincipal.getEmail()))
+                .subject(username)
                 .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
+                .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(key(), Jwts.SIG.HS256)
                 .compact();
+    }
+
+    /**
+     * Long-lived refresh token. Carries a "type":"refresh" claim so an access token
+     * can't be replayed at the /auth/refresh endpoint (and vice-versa).
+     */
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .subject(username)
+                .claim("type", "refresh")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + jwtRefreshExpirationMs))
+                .signWith(key(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /** True only for a valid, unexpired token whose "type" claim equals "refresh". */
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = Jwts.parser().verifyWith(key()).build()
+                    .parseSignedClaims(token).getPayload();
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private SecretKey key() {
@@ -57,6 +89,11 @@ public class JwtUtils {
             log.error("JWT token is unsupported: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("JWT claims string is empty: {}", e.getMessage());
+        } catch (JwtException e) {
+            // Catch-all for anything else the parser can throw (e.g. a tampered
+            // signature -> SignatureException). Ensures validate returns false rather
+            // than letting the exception escape.
+            log.error("Invalid JWT token: {}", e.getMessage());
         }
         return false;
     }

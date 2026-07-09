@@ -1,6 +1,5 @@
 package com.lms.auth.dto;
 
-import com.lms.user.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -21,5 +20,7 @@ public class RegisterRequest {
     @Size(min = 6, max = 40)
     private String password;
 
-    private User.Role role = User.Role.STUDENT; // Default role
+    // NOTE: role is intentionally NOT a bindable field. Public self-registration
+    // always creates a STUDENT (forced server-side in AuthController). Allowing the
+    // client to choose the role would let anyone register as ADMIN/INSTRUCTOR.
 }

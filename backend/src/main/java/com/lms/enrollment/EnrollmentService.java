@@ -1,5 +1,7 @@
 package com.lms.enrollment;
 
+import com.lms.common.exception.ConflictException;
+import com.lms.common.exception.ResourceNotFoundException;
 import com.lms.course.Course;
 import com.lms.course.CourseRepository;
 import com.lms.course.dto.CourseDto;
@@ -24,13 +26,13 @@ public class EnrollmentService {
     @Transactional
     public EnrollmentDto enrollInCourse(UUID userId, UUID courseId) {
         if (enrollmentRepository.existsByUserIdAndCourseId(userId, courseId)) {
-            throw new IllegalArgumentException("User is already enrolled in this course");
+            throw new ConflictException("User is already enrolled in this course");
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
 
         if (course.getStatus() != Course.Status.PUBLISHED) {
             throw new IllegalArgumentException("Cannot enroll in an unpublished course");

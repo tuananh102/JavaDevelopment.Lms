@@ -19,6 +19,13 @@ spring:
     # bị coi là "không rỗng", dẫn tới thiếu bảng.
     baseline-version: 0
 
+app:
+  cors:
+    # Danh sách origin được phép gọi API, phân tách bằng dấu phẩy. Default cho local dev
+    # (Vite/Express) + GitHub Pages. Production: đặt APP_CORS_ALLOWED_ORIGINS trên Azure.
+    # KHÔNG dùng "*" — vừa mở toàn bộ API vừa không tương thích khi bật allowCredentials.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
 jwt:
   # Secret được dùng làm khóa HS256 ở dạng chuỗi UTF-8 THÔ (không còn Base64-decode).
   # PHẢI >= 32 ký tự (=> >= 256-bit); ngắn hơn sẽ lỗi ký JWT khi login.

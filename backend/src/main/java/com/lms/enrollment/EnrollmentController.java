@@ -24,7 +24,7 @@ public class EnrollmentController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         
         EnrollmentDto enrollment = enrollmentService.enrollInCourse(userDetails.getId(), courseId);
-        return ResponseEntity.ok(enrollment);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(enrollment);
     }
 
     @GetMapping

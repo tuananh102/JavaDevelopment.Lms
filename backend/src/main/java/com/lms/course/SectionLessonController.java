@@ -1,11 +1,15 @@
 package com.lms.course;
 
+import com.lms.common.exception.ConflictException;
+import com.lms.common.exception.ForbiddenException;
+import com.lms.common.exception.ResourceNotFoundException;
 import com.lms.course.dto.LessonCreateRequest;
 import com.lms.course.dto.SectionCreateRequest;
 import com.lms.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,7 +35,7 @@ public class SectionLessonController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
         verifyOwnership(course, userDetails);
 
         Section section = Section.builder()
@@ -43,7 +47,7 @@ public class SectionLessonController {
         sectionRepository.save(section);
         // Trả body gọn (chỉ id) — KHÔNG trả entity vì Course<->Section là quan hệ
         // hai chiều sẽ gây đệ quy vô hạn khi Jackson serialize.
-        return ResponseEntity.ok(Map.of("id", section.getId()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", section.getId()));
     }
 
     @PutMapping("/sections/{sectionId}")
@@ -54,7 +58,7 @@ public class SectionLessonController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         Section section = sectionRepository.findById(sectionId)
-                .orElseThrow(() -> new IllegalArgumentException("Section not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
         verifyOwnership(section.getCourse(), userDetails);
 
         section.setTitle(request.getTitle());
@@ -72,7 +76,7 @@ public class SectionLessonController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         Section section = sectionRepository.findById(sectionId)
-                .orElseThrow(() -> new IllegalArgumentException("Section not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
         verifyOwnership(section.getCourse(), userDetails);
 
         try {
@@ -80,7 +84,7 @@ public class SectionLessonController {
             sectionRepository.delete(section);
             sectionRepository.flush();
         } catch (DataIntegrityViolationException ex) {
-            throw new IllegalArgumentException(
+            throw new ConflictException(
                     "Cannot delete this section because one of its lessons already has student progress.");
         }
         return ResponseEntity.noContent().build();
@@ -94,7 +98,7 @@ public class SectionLessonController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         Section section = sectionRepository.findById(sectionId)
-                .orElseThrow(() -> new IllegalArgumentException("Section not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
         verifyOwnership(section.getCourse(), userDetails);
 
         Lesson lesson = Lesson.builder()
@@ -108,7 +112,7 @@ public class SectionLessonController {
                 .build();
 
         lessonRepository.save(lesson);
-        return ResponseEntity.ok(Map.of("id", lesson.getId()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", lesson.getId()));
     }
 
     @PutMapping("/lessons/{lessonId}")
@@ -119,7 +123,7 @@ public class SectionLessonController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("Lesson not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson not found"));
         verifyOwnership(lesson.getSection().getCourse(), userDetails);
 
         lesson.setTitle(request.getTitle());
@@ -143,14 +147,14 @@ public class SectionLessonController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("Lesson not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson not found"));
         verifyOwnership(lesson.getSection().getCourse(), userDetails);
 
         try {
             lessonRepository.delete(lesson);
             lessonRepository.flush();
         } catch (DataIntegrityViolationException ex) {
-            throw new IllegalArgumentException(
+            throw new ConflictException(
                     "Cannot delete this lesson because a student already has progress on it.");
         }
         return ResponseEntity.noContent().build();
@@ -160,7 +164,7 @@ public class SectionLessonController {
     // do chính mình sở hữu (theo pattern trong CourseService).
     private void verifyOwnership(Course course, UserDetailsImpl userDetails) {
         if (course == null || !course.getInstructor().getId().equals(userDetails.getId())) {
-            throw new IllegalArgumentException("You don't have permission to modify this course");
+            throw new ForbiddenException("You don't have permission to modify this course");
         }
     }
 }
