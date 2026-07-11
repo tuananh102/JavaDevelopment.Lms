@@ -43,7 +43,7 @@ const LEVEL_LABEL: Record<Course["level"], string> = {
   BEGINNER: "Beginner",
   INTERMEDIATE: "Intermediate",
   ADVANCED: "Advanced",
-  ALL_LEVELS: "All levels",
+  ALL_LEVELS: "Mixed",
 };
 
 // Thứ tự chip filter level trên catalog (null = không lọc).
